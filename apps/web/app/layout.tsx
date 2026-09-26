@@ -67,6 +67,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </header>
         <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+        <footer className="border-t px-6 py-6 text-center text-xs" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-4">
+            <span>© {new Date().getFullYear()} Cancha Llena</span>
+            <Link href="/privacidad" className="hover:underline">
+              Privacidad
+            </Link>
+            <Link href="/terminos" className="hover:underline">
+              Términos
+            </Link>
+          </div>
+        </footer>
       </body>
     </html>
   );

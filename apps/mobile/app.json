@@ -8,11 +8,14 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.canchallena.app",
+      "buildNumber": "1"
     },
     "android": {
+      "package": "com.canchallena.app",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -28,6 +31,15 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Cancha Llena usa tu ubicación para avisarte de partidos que buscan jugadores cerca tuyo."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#2a78d6"
         }
       ]
     ]
