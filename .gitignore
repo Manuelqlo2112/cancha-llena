@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+dist
+*.log
+.env
+.env.local
+packages/db/pgdata
+.turbo
+.expo
+apps/mobile/.expo

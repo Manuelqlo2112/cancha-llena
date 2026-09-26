@@ -1,0 +1,127 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { db } from "@cancha-llena/db";
+import { cancelarReserva, crearReserva, crearSolicitudRival, unirseSolicitud } from "@/lib/reservas";
+import { crearCanchaFixture, crearComplejoFixture, crearUsuarioFixture, fechaRelativa, resetDb } from "./helpers";
+
+beforeEach(resetDb);
+
+async function reservarFixture(capacidad = 4) {
+  const complejo = await crearComplejoFixture();
+  const cancha = await crearCanchaFixture(complejo.id, { capacidadJugadores: capacidad });
+  const organizador = await crearUsuarioFixture();
+  const reserva = await crearReserva(organizador.id, cancha.id, fechaRelativa(1), "19:00");
+  if (!reserva.ok) throw new Error("fixture: no se pudo reservar");
+  return { complejo, cancha, organizador, reservaId: reserva.reservaId };
+}
+
+describe("crearSolicitudRival", () => {
+  it("la crea cuando faltan cupos y el organizador la pide", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    const r = await crearSolicitudRival(organizador.id, reservaId);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const solicitud = await db.query.solicitudesRival.findFirst({ where: { id: r.solicitudId } });
+    expect(solicitud?.estado).toBe("abierta");
+    expect(solicitud?.cuposFaltantes).toBe(3); // capacidad 4 - organizador
+  });
+
+  it("la rechaza si ya hay una abierta para la misma reserva", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    await crearSolicitudRival(organizador.id, reservaId);
+    const segunda = await crearSolicitudRival(organizador.id, reservaId);
+    expect(segunda).toMatchObject({ ok: false, error: "ya_existe" });
+  });
+
+  it("la rechaza si no quedan cupos (cancha llena)", async () => {
+    const { cancha, organizador, reservaId } = await reservarFixture(1); // capacidad 1 = ya está llena con el organizador
+    expect(cancha.capacidadJugadores).toBe(1);
+    const r = await crearSolicitudRival(organizador.id, reservaId);
+    expect(r).toMatchObject({ ok: false, error: "sin_cupos" });
+  });
+
+  it("la rechaza si quien la pide no es organizador ni participante", async () => {
+    const { reservaId } = await reservarFixture(4);
+    const ajeno = await crearUsuarioFixture();
+    const r = await crearSolicitudRival(ajeno.id, reservaId);
+    expect(r).toMatchObject({ ok: false, error: "sin_permiso" });
+  });
+
+  it("invita a jugadores cercanos con ubicación conocida y no a los lejanos o sin ubicación", async () => {
+    const { organizador, reservaId } = await reservarFixture(6);
+    // El complejo fixture queda en lat -33.45 / lng -70.65.
+    const cerca = await crearUsuarioFixture({ ultimaLat: "-33.451000", ultimaLng: "-70.651000" }); // ~150m
+    const lejos = await crearUsuarioFixture({ ultimaLat: "-34.600000", ultimaLng: "-71.500000" }); // muy lejos
+    const sinUbicacion = await crearUsuarioFixture();
+
+    const r = await crearSolicitudRival(organizador.id, reservaId);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.invitados).toBe(1);
+
+    const invitaciones = await db.query.solicitudInvitaciones.findMany({ where: { solicitudId: r.solicitudId } });
+    const invitados = invitaciones.map((i) => i.usuarioId);
+    expect(invitados).toContain(cerca.id);
+    expect(invitados).not.toContain(lejos.id);
+    expect(invitados).not.toContain(sinUbicacion.id);
+  });
+});
+
+describe("unirseSolicitud", () => {
+  it("suma un participante y descuenta cupos", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    const solicitud = await crearSolicitudRival(organizador.id, reservaId);
+    if (!solicitud.ok) throw new Error("fixture");
+
+    const rival = await crearUsuarioFixture();
+    const r = await unirseSolicitud(rival.id, solicitud.solicitudId);
+    expect(r).toEqual({ ok: true });
+
+    const actualizada = await db.query.solicitudesRival.findFirst({ where: { id: solicitud.solicitudId } });
+    expect(actualizada?.cuposFaltantes).toBe(2);
+    expect(actualizada?.estado).toBe("abierta");
+  });
+
+  it("cierra la solicitud cuando el último cupo se llena", async () => {
+    const { organizador, reservaId } = await reservarFixture(2); // 1 cupo libre tras el organizador
+    const solicitud = await crearSolicitudRival(organizador.id, reservaId);
+    if (!solicitud.ok) throw new Error("fixture");
+
+    const rival = await crearUsuarioFixture();
+    await unirseSolicitud(rival.id, solicitud.solicitudId);
+
+    const actualizada = await db.query.solicitudesRival.findFirst({ where: { id: solicitud.solicitudId } });
+    expect(actualizada?.estado).toBe("cerrada");
+    expect(actualizada?.cuposFaltantes).toBe(0);
+  });
+
+  it("rechaza unirse dos veces a la misma solicitud", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    const solicitud = await crearSolicitudRival(organizador.id, reservaId);
+    if (!solicitud.ok) throw new Error("fixture");
+
+    const rival = await crearUsuarioFixture();
+    await unirseSolicitud(rival.id, solicitud.solicitudId);
+    const segundo = await unirseSolicitud(rival.id, solicitud.solicitudId);
+    expect(segundo).toEqual({ ok: false, error: "ya_unido" });
+  });
+
+  it("rechaza unirse a una solicitud que ya no existe o está cerrada", async () => {
+    const rival = await crearUsuarioFixture();
+    const r = await unirseSolicitud(rival.id, "00000000-0000-0000-0000-000000000000");
+    expect(r).toEqual({ ok: false, error: "solicitud_cerrada" });
+  });
+});
+
+describe("cancelarReserva cierra solicitudes abiertas", () => {
+  it("marca la reserva cancelada y expira la solicitud de rival abierta", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    const solicitud = await crearSolicitudRival(organizador.id, reservaId);
+    if (!solicitud.ok) throw new Error("fixture");
+
+    const r = await cancelarReserva(organizador.id, reservaId);
+    expect(r).toEqual({ ok: true });
+
+    const solicitudActualizada = await db.query.solicitudesRival.findFirst({ where: { id: solicitud.solicitudId } });
+    expect(solicitudActualizada?.estado).toBe("expirada");
+  });
+});

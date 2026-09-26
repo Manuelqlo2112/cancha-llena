@@ -1,0 +1,12 @@
+{
+  "name": "cancha-llena",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "db:push": "pnpm --filter @cancha-llena/db db:push",
+    "db:seed": "pnpm --filter @cancha-llena/db db:seed",
+    "db:reset": "pnpm --filter @cancha-llena/db db:reset"
+  }
+}

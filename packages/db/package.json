@@ -1,0 +1,28 @@
+{
+  "name": "@cancha-llena/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./slots": "./src/slots.ts",
+    "./geo": "./src/geo.ts"
+  },
+  "scripts": {
+    "db:push": "drizzle-kit push",
+    "db:seed": "tsx src/seed.ts",
+    "db:reset": "node -e \"require('fs').rmSync('pgdata',{recursive:true,force:true})\" && pnpm db:push && pnpm db:seed"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "latest",
+    "drizzle-orm": "rc",
+    "postgres": "latest"
+  },
+  "devDependencies": {
+    "drizzle-kit": "rc",
+    "tsx": "latest",
+    "typescript": "latest",
+    "@types/node": "latest"
+  }
+}

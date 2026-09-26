@@ -1,0 +1,12 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  # apps/mobile queda AFUERA a propósito: es Expo/React Native puro, habla con
+  # el backend por HTTP (apps/web/app/api/**), no importa @cancha-llena/db
+  # (PGlite no corre en el runtime de React Native). Mezclarlo con pnpm +
+  # Metro (el bundler de RN) trae dolores de cabeza de hoisting que no valen
+  # la pena para un paquete que no comparte nada con el resto del monorepo.
+  # Se instala y corre con npm, desde apps/mobile directamente.
+  - "!apps/mobile"
+allowBuilds:
+  esbuild: true

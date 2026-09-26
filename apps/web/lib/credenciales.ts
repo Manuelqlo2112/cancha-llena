@@ -1,0 +1,35 @@
+import bcrypt from "bcryptjs";
+import { db, usuarios } from "@cancha-llena/db";
+
+// Lógica de email+contraseña compartida entre el Credentials provider de
+// Auth.js (auth.ts, para la web) y la API que usa el móvil (que no puede
+// usar el flujo de cookies/redirect de Auth.js) — un solo lugar para el
+// hash/verificación de contraseña.
+
+export async function verificarCredenciales(email: string, password: string) {
+  const emailNorm = email.toLowerCase().trim();
+  if (!emailNorm || !password) return null;
+
+  const usuario = await db.query.usuarios.findFirst({ where: { email: emailNorm } });
+  if (!usuario?.passwordHash) return null; // no existe, o es una cuenta OAuth sin password
+
+  const ok = await bcrypt.compare(password, usuario.passwordHash);
+  return ok ? usuario : null;
+}
+
+export type RegistrarConCredencialesResult =
+  | { ok: true; usuario: typeof usuarios.$inferSelect }
+  | { ok: false; error: "datos_invalidos" | "email_en_uso" };
+
+export async function registrarConCredenciales(nombre: string, email: string, password: string): Promise<RegistrarConCredencialesResult> {
+  const nombreLimpio = nombre.trim();
+  const emailNorm = email.toLowerCase().trim();
+  if (!nombreLimpio || !emailNorm || password.length < 8) return { ok: false, error: "datos_invalidos" };
+
+  const yaExiste = await db.query.usuarios.findFirst({ where: { email: emailNorm } });
+  if (yaExiste) return { ok: false, error: "email_en_uso" };
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const [nuevo] = await db.insert(usuarios).values({ nombre: nombreLimpio, email: emailNorm, rol: "jugador", passwordHash }).returning();
+  return { ok: true, usuario: nuevo! };
+}
