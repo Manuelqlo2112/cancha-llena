@@ -67,6 +67,28 @@ describe("actualizarComplejo", () => {
     const r = await actualizarComplejo(superAdmin, complejo.id, { amenidades: ["Cafetería"], requiereAbono: false, porcentajeAbono: 0 });
     expect(r).toEqual({ ok: true });
   });
+
+  it("rechaza porcentajeAbono fuera de rango (0, negativo, >100 o NaN) cuando requiereAbono es true", async () => {
+    const complejo = await crearComplejoFixture({ requiereAbono: true, porcentajeAbono: "30.00" });
+    const admin = await crearUsuarioFixture({ rol: "admin_complejo", complejoAdminId: complejo.id });
+    const base = { amenidades: [] as string[], requiereAbono: true };
+
+    for (const porcentajeAbono of [0, -10, 101, NaN]) {
+      const r = await actualizarComplejo(admin, complejo.id, { ...base, porcentajeAbono });
+      expect(r).toEqual({ ok: false, error: "datos_invalidos" });
+    }
+
+    const sinCambios = await db.query.complejos.findFirst({ where: { id: complejo.id } });
+    expect(Number(sinCambios?.porcentajeAbono)).toBe(30); // ningún intento inválido se guardó
+  });
+
+  it("no valida el rango de porcentajeAbono cuando requiereAbono es false (siempre se fuerza a 0)", async () => {
+    const complejo = await crearComplejoFixture();
+    const admin = await crearUsuarioFixture({ rol: "admin_complejo", complejoAdminId: complejo.id });
+
+    const r = await actualizarComplejo(admin, complejo.id, { amenidades: [], requiereAbono: false, porcentajeAbono: 999 });
+    expect(r).toEqual({ ok: true });
+  });
 });
 
 describe("actualizarCancha", () => {
@@ -97,6 +119,20 @@ describe("actualizarCancha", () => {
 
     const r = await actualizarCancha(adminDeB, cancha.id, { precioBase: 1000, activo: true });
     expect(r).toEqual({ ok: false, error: "sin_permiso" });
+  });
+
+  it("rechaza precioBase inválido (0, negativo o NaN)", async () => {
+    const complejo = await crearComplejoFixture();
+    const cancha = await crearCanchaFixture(complejo.id, { precioBase: "40000" });
+    const admin = await crearUsuarioFixture({ rol: "admin_complejo", complejoAdminId: complejo.id });
+
+    for (const precioBase of [0, -5000, NaN]) {
+      const r = await actualizarCancha(admin, cancha.id, { precioBase, activo: true });
+      expect(r).toEqual({ ok: false, error: "datos_invalidos" });
+    }
+
+    const sinCambios = await db.query.canchas.findFirst({ where: { id: cancha.id } });
+    expect(Number(sinCambios?.precioBase)).toBe(40000); // ningún intento inválido se guardó
   });
 });
 

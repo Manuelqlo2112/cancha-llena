@@ -12,7 +12,7 @@ import type { getSessionUser } from "@/lib/session";
 
 type Sesion = NonNullable<Awaited<ReturnType<typeof getSessionUser>>>;
 
-export type ActualizarResult = { ok: true } | { ok: false; error: "sin_permiso" | "no_encontrada" };
+export type ActualizarResult = { ok: true } | { ok: false; error: "sin_permiso" | "no_encontrada" | "datos_invalidos" };
 
 export async function actualizarComplejo(
   usuario: Sesion | null,
@@ -27,6 +27,12 @@ export async function actualizarComplejo(
   },
 ): Promise<ActualizarResult> {
   if (!puedeAdministrar(usuario, complejoId)) return { ok: false, error: "sin_permiso" };
+  // El form manda un <input type="number"> sin min/max — el navegador ayuda,
+  // pero un Server Action se puede invocar sin pasar por ese input para
+  // nada, así que el rango real se exige acá, no solo en el HTML.
+  if (datos.requiereAbono && (!Number.isFinite(datos.porcentajeAbono) || datos.porcentajeAbono <= 0 || datos.porcentajeAbono > 100)) {
+    return { ok: false, error: "datos_invalidos" };
+  }
 
   await db
     .update(complejos)
@@ -100,6 +106,7 @@ export async function actualizarCancha(
   const cancha = await db.query.canchas.findFirst({ where: { id: canchaId } });
   if (!cancha) return { ok: false, error: "no_encontrada" };
   if (!puedeAdministrar(usuario, cancha.complejoId)) return { ok: false, error: "sin_permiso" };
+  if (!Number.isFinite(datos.precioBase) || datos.precioBase <= 0) return { ok: false, error: "datos_invalidos" };
 
   await db
     .update(canchas)

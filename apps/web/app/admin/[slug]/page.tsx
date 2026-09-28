@@ -16,6 +16,7 @@ const MENSAJES: Record<string, string> = {
   guardado: "Cambios guardados.",
   error_sin_permiso: "No tenés permiso para editar esto.",
   error_no_encontrada: "Esa cancha ya no existe.",
+  error_datos_invalidos: "Revisá los datos — el precio tiene que ser mayor a 0, y el % de abono entre 1 y 100.",
 };
 
 export default async function AdminComplejoPage({
@@ -159,7 +160,7 @@ export default async function AdminComplejoPage({
                   type="number"
                   name="precioBase"
                   defaultValue={cancha.precioBase}
-                  min={0}
+                  min={1000}
                   step={1000}
                   className="w-24 rounded-md border px-2 py-1 text-sm"
                   style={{ borderColor: "var(--gridline)", background: "var(--surface)" }}
@@ -244,7 +245,7 @@ export default async function AdminComplejoPage({
                 type="number"
                 name="porcentajeAbono"
                 defaultValue={Number(complejo.porcentajeAbono)}
-                min={0}
+                min={1}
                 max={100}
                 className="w-20 rounded-md border px-2 py-1 text-sm"
                 style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
