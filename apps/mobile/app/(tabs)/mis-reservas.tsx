@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleShe
 import { api, SesionInvalidaError, type MiRacha, type MiReserva } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
-import { formatHora } from "@/lib/format";
+import { formatCLP, formatHora } from "@/lib/format";
 
 const DEPORTE_LABEL: Record<string, string> = { futbolito: "Fútbolito", futbol: "Fútbol", padel: "Pádel", tenis: "Tenis" };
 const ESTADO_LABEL: Record<string, string> = {
@@ -163,6 +163,11 @@ export default function MisReservasScreen() {
               {!r.esOrganizador ? <Chip text="Te uniste" bg={colors.statusGood} /> : null}
               <Chip text={ESTADO_LABEL[r.estado] ?? r.estado} bg={colors.textMuted} />
             </View>
+            {r.montoAbono > 0 ? (
+              <Text style={styles.muted}>
+                Abono pagado: {formatCLP(r.montoAbono)} de {formatCLP(r.montoTotal)}
+              </Text>
+            ) : null}
             {accionable && r.esOrganizador && r.estado !== "cancelada" ? (
               <View style={styles.actionsRow}>
                 {r.puedeBuscarRival ? (

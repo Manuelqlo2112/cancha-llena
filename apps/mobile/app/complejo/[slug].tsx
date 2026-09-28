@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, S
 import { api, type ComplejoDetalle } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
+import { formatCLP } from "@/lib/format";
 
 const DEPORTE_LABEL: Record<string, string> = { futbolito: "Fútbolito", futbol: "Fútbol", padel: "Pádel", tenis: "Tenis" };
 
@@ -149,7 +150,7 @@ export default function ComplejoScreen() {
               <Text style={styles.canchaNombre}>
                 {cancha.nombre} <Text style={styles.muted}>· {DEPORTE_LABEL[cancha.deporte] ?? cancha.deporte}</Text>
               </Text>
-              <Text style={styles.precio}>${cancha.precioBase.toLocaleString("es-CL")}/h</Text>
+              <Text style={styles.precio}>{formatCLP(cancha.precioBase)}/h</Text>
             </View>
             {cancha.libres.length === 0 ? (
               <Text style={styles.muted}>Sin horarios libres este día</Text>

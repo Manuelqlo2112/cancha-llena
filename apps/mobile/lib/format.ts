@@ -3,3 +3,7 @@
 export function formatHora(hhmmss: string): string {
   return hhmmss.slice(0, 5);
 }
+
+export function formatCLP(n: number): string {
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(n);
+}
