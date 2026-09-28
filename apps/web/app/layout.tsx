@@ -19,11 +19,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           className="sticky top-0 z-10 border-b backdrop-blur"
           style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--surface) 85%, transparent)" }}
         >
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-            <Link href="/" className="text-lg font-semibold tracking-tight">
+          <div className="mx-auto flex max-w-5xl flex-col items-center gap-2 px-4 py-3 sm:flex-row sm:justify-between sm:px-6 sm:py-4">
+            <Link href="/" className="text-base font-semibold tracking-tight sm:text-lg">
               ⚽ Cancha Llena
             </Link>
-            <nav className="flex items-center gap-5 text-sm" style={{ color: "var(--text-secondary)" }}>
+            <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm" style={{ color: "var(--text-secondary)" }}>
               <Link href="/" className="hover:underline">
                 Explorar
               </Link>
@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </Link>
               {session && (session.rol === "admin_complejo" || session.rol === "super_admin") ? (
                 <Link href="/admin" className="hover:underline">
-                  Panel de admin
+                  Admin
                 </Link>
               ) : null}
               {session ? (

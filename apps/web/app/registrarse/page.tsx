@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/Card";
 import { registrarUsuarioAction } from "@/app/auth-actions";
+import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,9 @@ const ERRORES: Record<string, string> = {
 
 export default async function RegistrarsePage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
   const { next, error } = await searchParams;
+  // Ya logueado no tiene sentido ver "crear cuenta" — mandarlo a donde iba.
+  const session = await getSessionUser();
+  if (session) redirect(next || "/");
 
   return (
     <div className="mx-auto max-w-sm">

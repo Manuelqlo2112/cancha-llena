@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleShe
 import { api, SesionInvalidaError, type MiRacha, type MiReserva } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
+import { formatHora } from "@/lib/format";
 
 const DEPORTE_LABEL: Record<string, string> = { futbolito: "Fútbolito", futbol: "Fútbol", padel: "Pádel", tenis: "Tenis" };
 const ESTADO_LABEL: Record<string, string> = {
@@ -18,6 +19,11 @@ function formatFechaCorta(iso: string) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" });
 }
 
+// Un jugador activo puede acumular decenas de partidos pasados — mostrarlos
+// todos de una hace que esta pantalla sea puro scroll sin fin. Solo los
+// primeros quedan visibles hasta que se pida ver el resto.
+const LIMITE_HISTORIAL_INICIAL = 10;
+
 export default function MisReservasScreen() {
   const router = useRouter();
   const { usuario } = useSession();
@@ -25,6 +31,7 @@ export default function MisReservasScreen() {
   const [rachas, setRachas] = useState<MiRacha[]>([]);
   const [cargando, setCargando] = useState(false);
   const [enCurso, setEnCurso] = useState<string | null>(null);
+  const [verTodoHistorial, setVerTodoHistorial] = useState(false);
 
   const cargar = useCallback(async () => {
     if (!usuario) return;
@@ -93,6 +100,8 @@ export default function MisReservasScreen() {
   const hoyISO = new Date().toISOString().slice(0, 10);
   const proximas = (reservas ?? []).filter((r) => r.fecha >= hoyISO && r.estado !== "cancelada");
   const pasadas = (reservas ?? []).filter((r) => r.fecha < hoyISO || r.estado === "cancelada");
+  const pasadasVisibles = verTodoHistorial ? pasadas : pasadas.slice(0, LIMITE_HISTORIAL_INICIAL);
+  const ocultas = pasadas.length - pasadasVisibles.length;
 
   return (
     <FlatList
@@ -103,11 +112,19 @@ export default function MisReservasScreen() {
         ...(rachas.length > 0 ? [{ tipo: "racha-header" as const }, ...rachas.map((r) => ({ tipo: "racha" as const, r }))] : []),
         { tipo: "header" as const },
         ...(proximas.length === 0 ? [{ tipo: "vacio" as const }] : proximas.map((r) => ({ tipo: "reserva" as const, r, accionable: true }))),
-        ...(pasadas.length > 0 ? [{ tipo: "historial-header" as const }, ...pasadas.map((r) => ({ tipo: "reserva" as const, r, accionable: false }))] : []),
+        ...(pasadas.length > 0 ? [{ tipo: "historial-header" as const }, ...pasadasVisibles.map((r) => ({ tipo: "reserva" as const, r, accionable: false }))] : []),
+        ...(ocultas > 0 ? [{ tipo: "ver-mas" as const, cantidad: ocultas }] : []),
       ]}
       keyExtractor={(item, i) => (item.tipo === "reserva" ? item.r.id : item.tipo === "racha" ? `racha-${item.r.complejoSlug}` : `${item.tipo}-${i}`)}
       renderItem={({ item }) => {
         if (item.tipo === "racha-header") return <Text style={styles.sectionTitle}>Tu racha</Text>;
+        if (item.tipo === "ver-mas") {
+          return (
+            <Pressable style={styles.verMasBtn} onPress={() => setVerTodoHistorial(true)}>
+              <Text style={styles.verMasTexto}>Ver los {item.cantidad} partidos anteriores</Text>
+            </Pressable>
+          );
+        }
         if (item.tipo === "racha") {
           const r = item.r;
           return (
@@ -141,7 +158,7 @@ export default function MisReservasScreen() {
             </Text>
             <View style={styles.badgeRow}>
               <Text style={styles.rowText}>{formatFechaCorta(r.fecha)}</Text>
-              <Text style={styles.rowText}>{r.horaInicio}–{r.horaFin}</Text>
+              <Text style={styles.rowText}>{formatHora(r.horaInicio)}–{formatHora(r.horaFin)}</Text>
               {r.esHorarioValle ? <Chip text="Horario valle" bg={colors.seriesValle} /> : null}
               {!r.esOrganizador ? <Chip text="Te uniste" bg={colors.statusGood} /> : null}
               <Chip text={ESTADO_LABEL[r.estado] ?? r.estado} bg={colors.textMuted} />
@@ -188,4 +205,6 @@ const styles = StyleSheet.create({
   actionsRow: { flexDirection: "row", gap: 8, marginTop: 8 },
   actionBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   actionBtnText: { color: "white", fontSize: 12, fontWeight: "600" },
+  verMasBtn: { alignItems: "center", paddingVertical: 12 },
+  verMasTexto: { color: colors.seriesValle, fontSize: 13, fontWeight: "600", textDecorationLine: "underline" },
 });

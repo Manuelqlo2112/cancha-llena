@@ -8,6 +8,12 @@ import { buscarRivalAction, cancelarReservaAction } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
 
+// Un jugador activo (o, en el seed, cualquiera con suficiente historial)
+// puede acumular decenas de partidos pasados — mostrarlos todos de una hace
+// que la pantalla sea puro scroll. Los primeros quedan siempre visibles, el
+// resto se pliega en un <details> nativo (sin JS aparte).
+const LIMITE_HISTORIAL_INICIAL = 10;
+
 const MENSAJES: Record<string, string> = {
   cancelado: "Reserva cancelada.",
   solicitud: "Listo — avisamos que buscás rival para ese partido.",
@@ -119,10 +125,22 @@ export default async function MisReservasPage({
         <section>
           <h2 className="mb-3 font-medium">Historial</h2>
           <div className="flex flex-col gap-2">
-            {pasadas.map((r) => (
+            {pasadas.slice(0, LIMITE_HISTORIAL_INICIAL).map((r) => (
               <ReservaRow key={r.id} r={r} accionable={false} />
             ))}
           </div>
+          {pasadas.length > LIMITE_HISTORIAL_INICIAL ? (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-sm underline" style={{ color: "var(--text-secondary)" }}>
+                Ver los {pasadas.length - LIMITE_HISTORIAL_INICIAL} partidos anteriores
+              </summary>
+              <div className="mt-2 flex flex-col gap-2">
+                {pasadas.slice(LIMITE_HISTORIAL_INICIAL).map((r) => (
+                  <ReservaRow key={r.id} r={r} accionable={false} />
+                ))}
+              </div>
+            </details>
+          ) : null}
         </section>
       ) : null}
     </div>

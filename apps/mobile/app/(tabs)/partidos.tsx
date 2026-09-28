@@ -5,6 +5,7 @@ import { api, SesionInvalidaError, type InvitacionPendiente, type SolicitudAbier
 import { useSession } from "@/lib/session";
 import { pedirUbicacionActual } from "@/lib/location";
 import { colors } from "@/lib/theme";
+import { formatHora } from "@/lib/format";
 
 const DEPORTE_LABEL: Record<string, string> = { futbolito: "Fútbolito", futbol: "Fútbol", padel: "Pádel", tenis: "Tenis" };
 
@@ -130,7 +131,7 @@ export default function PartidosScreen() {
                 </Text>
                 <View style={styles.badgeRow}>
                   <Text style={styles.rowText}>{formatFechaCorta(i.fecha)}</Text>
-                  <Text style={styles.rowText}>{i.horaInicio}–{i.horaFin}</Text>
+                  <Text style={styles.rowText}>{formatHora(i.horaInicio)}–{formatHora(i.horaFin)}</Text>
                   {i.esHorarioValle ? <Chip text="Horario valle" bg={colors.seriesValle} /> : null}
                   <Chip text={`Faltan ${i.cuposFaltantes}`} bg={colors.statusWarning} />
                   {i.distanciaKm !== null ? <Text style={styles.rowText}>{i.distanciaKm < 1 ? "< 1 km" : `${Math.round(i.distanciaKm)} km`}</Text> : null}
@@ -173,7 +174,7 @@ export default function PartidosScreen() {
             <View style={styles.badgeRow}>
               <Text style={styles.rowText}>{formatFechaCorta(s.fecha)}</Text>
               <Text style={styles.rowText}>
-                {s.horaInicio}–{s.horaFin}
+                {formatHora(s.horaInicio)}–{formatHora(s.horaFin)}
               </Text>
               {s.esHorarioValle ? <Chip text="Horario valle" bg={colors.seriesValle} /> : null}
               <Chip text={`Faltan ${s.cuposFaltantes}`} bg={colors.statusWarning} />

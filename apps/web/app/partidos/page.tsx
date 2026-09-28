@@ -1,7 +1,7 @@
 import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { ActivarUbicacionButton } from "@/components/ActivarUbicacionButton";
-import { DEPORTE_LABEL, formatFechaCorta } from "@/lib/format";
+import { DEPORTE_LABEL, formatFechaCorta, formatHora } from "@/lib/format";
 import { getSessionUser } from "@/lib/session";
 import { listarInvitacionesPendientes, obtenerSolicitudesAbiertas } from "@/lib/reservas";
 import { responderInvitacionAction, unirseComoRival } from "@/app/actions";
@@ -75,7 +75,7 @@ export default async function PartidosPage({
                     </p>
                     <p className="mt-1 flex flex-wrap items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
                       <span>{formatFechaCorta(i.fecha)}</span>
-                      <span>{i.horaInicio}–{i.horaFin}</span>
+                      <span>{formatHora(i.horaInicio)}–{formatHora(i.horaFin)}</span>
                       {i.esHorarioValle ? <Badge tone="accent">Horario valle</Badge> : null}
                       <Badge tone="warning">Faltan {i.cuposFaltantes}</Badge>
                       {i.distanciaKm !== null ? <span>{i.distanciaKm < 1 ? "a menos de 1 km" : `a ${Math.round(i.distanciaKm)} km`}</span> : null}
@@ -122,7 +122,7 @@ export default async function PartidosPage({
                   </p>
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
                     <span>{formatFechaCorta(s.fecha)}</span>
-                    <span>{s.horaInicio}–{s.horaFin}</span>
+                    <span>{formatHora(s.horaInicio)}–{formatHora(s.horaFin)}</span>
                     {s.esHorarioValle ? <Badge tone="accent">Horario valle</Badge> : null}
                     <Badge tone="warning">Faltan {s.cuposFaltantes}</Badge>
                     <span>Organiza {s.organizadorNombre}</span>

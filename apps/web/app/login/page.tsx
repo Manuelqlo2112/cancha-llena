@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/Card";
 import { loginConCredencialesAction, signInGoogleAction, signInMicrosoftAction } from "@/app/auth-actions";
 import { devLoginHabilitado } from "@/lib/devAuth";
+import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,10 @@ const ERRORES: Record<string, string> = {
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
   const { next, error } = await searchParams;
+  // Ya logueado no tiene sentido ver el login — a menos que venga de un
+  // error real (ahí NO hay sesión, así que este guard no interfiere).
+  const session = await getSessionUser();
+  if (session) redirect(next || "/");
 
   return (
     <div className="mx-auto max-w-sm">
