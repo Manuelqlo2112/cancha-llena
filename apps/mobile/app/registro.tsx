@@ -24,11 +24,11 @@ export default function RegistroScreen() {
     setError(null);
     try {
       const r = await api.registrarse(nombre, email, password);
-      if (!r.ok || !r.usuario) {
+      if (!r.ok || !r.usuario || !r.token) {
         setError(ERRORES[r.error ?? ""] ?? "No se pudo crear la cuenta.");
         return;
       }
-      iniciarSesion(r.usuario);
+      iniciarSesion(r.usuario, r.token);
       if (router.canGoBack()) router.back();
       else router.replace("/");
     } finally {

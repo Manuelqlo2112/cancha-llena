@@ -34,7 +34,7 @@ export default function ComplejoScreen() {
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
-      const { complejo } = await api.obtenerComplejo(slug, usuario?.id ?? null);
+      const { complejo } = await api.obtenerComplejo(slug);
       setComplejo(complejo);
       setDiaSeleccionado((actual) => actual ?? complejo.canchas[0]?.slots[0]?.fecha ?? null);
     } catch (e) {
@@ -61,7 +61,7 @@ export default function ComplejoScreen() {
     if (!usuario) return router.push("/login");
     setReservando(`${canchaId}-${hora}`);
     try {
-      const r = await api.reservar(usuario.id, canchaId, fecha, hora);
+      const r = await api.reservar(canchaId, fecha, hora);
       if (!r.ok || !r.reservaId) {
         const motivo = r.error === "ocupado" ? "Justo se ocupó ese horario." : r.error === "fecha_pasada" ? "Ese día ya pasó." : (r.error ?? "");
         Alert.alert("No se pudo reservar", motivo);
@@ -80,7 +80,7 @@ export default function ComplejoScreen() {
     if (!usuario || !pendingConfirm) return;
     setEnviandoSolicitud(true);
     try {
-      const r = await api.buscarRival(usuario.id, pendingConfirm.reservaId);
+      const r = await api.buscarRival(pendingConfirm.reservaId);
       if (r.ok) {
         setPendingConfirm(null);
         Alert.alert("Listo", "Avisamos que este partido busca jugadores — ya aparece en la pestaña Partidos.");

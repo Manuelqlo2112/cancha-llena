@@ -16,18 +16,28 @@ function inferApiBaseUrl(): string {
 
 export const API_BASE_URL = inferApiBaseUrl();
 
-// Cuando el servidor se reseedea (dev) o a alguien lo borran, la sesión
-// guardada en el celular (AsyncStorage) queda apuntando a un usuarioId que
-// ya no existe — el servidor responde 401 con un cuerpo tipo
-// {ok:false,error}, que NO tiene la forma que espera cada pantalla (p. ej.
-// {reservas,rachas}). Antes eso se devolvía igual "como si" fuera la
-// respuesta esperada y la pantalla explotaba tratando de leer campos que no
-// estaban. Ahora se detecta acá y se avisa a la sesión para que se cierre
-// sola — lib/session.tsx registra este handler.
+// Cuando el servidor se reseedea (dev), la sesión guardada en el celular
+// (AsyncStorage) queda apuntando a un token que ya no existe — el servidor
+// responde 401 con un cuerpo tipo {ok:false,error}, que NO tiene la forma
+// que espera cada pantalla (p. ej. {reservas,rachas}). Antes eso se
+// devolvía igual "como si" fuera la respuesta esperada y la pantalla
+// explotaba tratando de leer campos que no estaban. Ahora se detecta acá y
+// se avisa a la sesión para que se cierre sola — lib/session.tsx registra
+// este handler.
 export class SesionInvalidaError extends Error {}
 let manejarSesionInvalida: (() => void) | null = null;
 export function setSesionInvalidaHandler(fn: (() => void) | null) {
   manejarSesionInvalida = fn;
+}
+
+// Token de sesión móvil (ver apps/web/lib/sesionesMovil.ts) — reemplaza el
+// diseño anterior, donde el celular mandaba su propio usuarioId en un header
+// y el servidor confiaba a ciegas (cualquiera que supiera el UUID de otro
+// usuario podía actuar como él). lib/session.tsx llama a esto al loguearse
+// y al cerrar sesión; el resto de este archivo nunca vuelve a tocarlo.
+let authToken: string | null = null;
+export function setAuthToken(token: string | null) {
+  authToken = token;
 }
 
 export type Jugador = { id: string; nombre: string; email: string };
@@ -122,15 +132,12 @@ export type MiRacha = {
   vigente: boolean;
 };
 
-async function request<T>(
-  path: string,
-  options: { method?: string; body?: unknown; usuarioId?: string | null; requiereSesion?: boolean } = {},
-): Promise<T> {
+async function request<T>(path: string, options: { method?: string; body?: unknown; requiereSesion?: boolean } = {}): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
-      ...(options.usuarioId ? { "x-user-id": options.usuarioId } : {}),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
@@ -153,37 +160,33 @@ async function request<T>(
 export const api = {
   // Login real, email + contraseña (mismo backend que "Crear cuenta" en la web).
   login: (email: string, password: string) =>
-    request<{ ok: boolean; usuario?: Jugador & { rol: string }; error?: string }>("/api/mobile-auth/login", { method: "POST", body: { email, password } }),
+    request<{ ok: boolean; token?: string; usuario?: Jugador & { rol: string }; error?: string }>("/api/mobile-auth/login", {
+      method: "POST",
+      body: { email, password },
+    }),
   registrarse: (nombre: string, email: string, password: string) =>
-    request<{ ok: boolean; usuario?: Jugador & { rol: string }; error?: string }>("/api/mobile-auth/registro", { method: "POST", body: { nombre, email, password } }),
+    request<{ ok: boolean; token?: string; usuario?: Jugador & { rol: string }; error?: string }>("/api/mobile-auth/registro", {
+      method: "POST",
+      body: { nombre, email, password },
+    }),
+  logout: () => request<{ ok: boolean }>("/api/mobile-auth/logout", { method: "POST" }),
   // Atajo de desarrollo, sin contraseña — /login/dev.
   listarJugadoresDev: () => request<{ jugadores: Jugador[] }>("/api/dev/login"),
-  loginDev: (usuarioId: string) => request<{ ok: boolean; usuario?: Jugador & { rol: string } }>("/api/dev/login", { method: "POST", body: { usuarioId } }),
+  loginDev: (usuarioId: string) =>
+    request<{ ok: boolean; token?: string; usuario?: Jugador & { rol: string } }>("/api/dev/login", { method: "POST", body: { usuarioId } }),
   listarComplejos: () => request<{ complejos: ComplejoResumen[] }>("/api/complejos"),
-  obtenerComplejo: (slug: string, usuarioId: string | null) =>
-    request<{ complejo: ComplejoDetalle }>(`/api/complejos/${slug}`, { usuarioId }),
-  reservar: (usuarioId: string, canchaId: string, fecha: string, hora: string) =>
-    request<{ ok: boolean; reservaId?: string; error?: string }>("/api/reservas", {
-      method: "POST",
-      usuarioId,
-      body: { canchaId, fecha, hora },
-    }),
-  unirseSolicitud: (usuarioId: string, solicitudId: string) =>
-    request<{ ok: boolean; error?: string }>(`/api/solicitudes/${solicitudId}/unirse`, { method: "POST", usuarioId }),
-  listarSolicitudes: (usuarioId: string | null) =>
-    request<{ solicitudes: SolicitudAbierta[] }>("/api/solicitudes", { usuarioId }),
-  misReservas: (usuarioId: string) => request<{ reservas: MiReserva[]; rachas: MiRacha[] }>("/api/reservas/mias", { usuarioId, requiereSesion: true }),
-  cancelarReserva: (usuarioId: string, reservaId: string) =>
-    request<{ ok: boolean; error?: string }>(`/api/reservas/${reservaId}/cancelar`, { method: "POST", usuarioId }),
-  buscarRival: (usuarioId: string, reservaId: string) =>
-    request<{ ok: boolean; solicitudId?: string; invitados?: number; error?: string }>(`/api/reservas/${reservaId}/buscar-rival`, { method: "POST", usuarioId }),
-  actualizarUbicacion: (usuarioId: string, lat: number, lng: number) =>
-    request<{ ok: boolean; error?: string }>("/api/ubicacion", { method: "POST", usuarioId, body: { lat, lng } }),
-  listarInvitaciones: (usuarioId: string) => request<{ invitaciones: InvitacionPendiente[] }>("/api/invitaciones", { usuarioId, requiereSesion: true }),
-  responderInvitacion: (usuarioId: string, invitacionId: string, respuesta: "aceptada" | "rechazada") =>
-    request<{ ok: boolean; unido?: boolean; error?: string }>(`/api/invitaciones/${invitacionId}/responder`, {
-      method: "POST",
-      usuarioId,
-      body: { respuesta },
-    }),
+  obtenerComplejo: (slug: string) => request<{ complejo: ComplejoDetalle }>(`/api/complejos/${slug}`),
+  reservar: (canchaId: string, fecha: string, hora: string) =>
+    request<{ ok: boolean; reservaId?: string; error?: string }>("/api/reservas", { method: "POST", body: { canchaId, fecha, hora } }),
+  unirseSolicitud: (solicitudId: string) =>
+    request<{ ok: boolean; error?: string }>(`/api/solicitudes/${solicitudId}/unirse`, { method: "POST" }),
+  listarSolicitudes: () => request<{ solicitudes: SolicitudAbierta[] }>("/api/solicitudes"),
+  misReservas: () => request<{ reservas: MiReserva[]; rachas: MiRacha[] }>("/api/reservas/mias", { requiereSesion: true }),
+  cancelarReserva: (reservaId: string) => request<{ ok: boolean; error?: string }>(`/api/reservas/${reservaId}/cancelar`, { method: "POST" }),
+  buscarRival: (reservaId: string) =>
+    request<{ ok: boolean; solicitudId?: string; invitados?: number; error?: string }>(`/api/reservas/${reservaId}/buscar-rival`, { method: "POST" }),
+  actualizarUbicacion: (lat: number, lng: number) => request<{ ok: boolean; error?: string }>("/api/ubicacion", { method: "POST", body: { lat, lng } }),
+  listarInvitaciones: () => request<{ invitaciones: InvitacionPendiente[] }>("/api/invitaciones", { requiereSesion: true }),
+  responderInvitacion: (invitacionId: string, respuesta: "aceptada" | "rechazada") =>
+    request<{ ok: boolean; unido?: boolean; error?: string }>(`/api/invitaciones/${invitacionId}/responder`, { method: "POST", body: { respuesta } }),
 };

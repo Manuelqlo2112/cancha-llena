@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/Card";
 import { loginConCredencialesAction, signInGoogleAction, signInMicrosoftAction } from "@/app/auth-actions";
+import { devLoginHabilitado } from "@/lib/devAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -79,12 +80,14 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           Crear cuenta
         </Link>
       </p>
-      <p className="mt-6 text-center text-xs" style={{ color: "var(--text-muted)" }}>
-        ¿Sos del equipo?{" "}
-        <Link href="/login/dev" className="underline">
-          Entrar como usuario de prueba
-        </Link>
-      </p>
+      {devLoginHabilitado() ? (
+        <p className="mt-6 text-center text-xs" style={{ color: "var(--text-muted)" }}>
+          ¿Sos del equipo?{" "}
+          <Link href="/login/dev" className="underline">
+            Entrar como usuario de prueba
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

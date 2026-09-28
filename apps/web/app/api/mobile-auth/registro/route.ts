@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { registrarConCredenciales } from "@/lib/credenciales";
+import { crearSesionMovil } from "@/lib/sesionesMovil";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -11,5 +12,6 @@ export async function POST(req: NextRequest) {
   if (!resultado.ok) return NextResponse.json(resultado, { status: 409 });
 
   const { usuario } = resultado;
-  return NextResponse.json({ ok: true, usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol } });
+  const token = await crearSesionMovil(usuario.id);
+  return NextResponse.json({ ok: true, token, usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol } });
 }

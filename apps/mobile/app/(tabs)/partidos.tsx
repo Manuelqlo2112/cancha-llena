@@ -31,7 +31,7 @@ export default function PartidosScreen() {
       // Por separado (no Promise.all): si la sesión guardada quedó inválida,
       // que igual se pueda ver el listado abierto de partidos, que no
       // necesita sesión.
-      const { solicitudes } = await api.listarSolicitudes(usuario?.id ?? null);
+      const { solicitudes } = await api.listarSolicitudes();
       setSolicitudes(solicitudes);
     } finally {
       setCargando(false);
@@ -39,7 +39,7 @@ export default function PartidosScreen() {
 
     if (usuario) {
       try {
-        const inv = await api.listarInvitaciones(usuario.id);
+        const inv = await api.listarInvitaciones();
         setInvitaciones(inv.invitaciones);
       } catch (e) {
         // Sesión inválida: lib/session.tsx ya la cerró sola. Otros errores
@@ -65,7 +65,7 @@ export default function PartidosScreen() {
         Alert.alert("No pudimos activarla", res.motivo === "permiso_denegado" ? "Necesitamos permiso de ubicación para avisarte de partidos cerca." : "Intentá de nuevo en un rato.");
         return;
       }
-      await api.actualizarUbicacion(usuario.id, res.lat, res.lng);
+      await api.actualizarUbicacion(res.lat, res.lng);
       setUbicacionActiva(true);
       Alert.alert("Listo", "Te vamos a avisar de partidos cerca tuyo.");
       await cargar();
@@ -78,7 +78,7 @@ export default function PartidosScreen() {
     if (!usuario) return router.push("/login");
     setEnCurso(id);
     try {
-      const r = await api.unirseSolicitud(usuario.id, id);
+      const r = await api.unirseSolicitud(id);
       if (!r.ok) Alert.alert("No se pudo unir", r.error ?? "");
       else {
         Alert.alert("Listo", "Te anotaste en el partido.");
@@ -93,7 +93,7 @@ export default function PartidosScreen() {
     if (!usuario) return;
     setEnCurso(id);
     try {
-      const r = await api.responderInvitacion(usuario.id, id, respuesta);
+      const r = await api.responderInvitacion(id, respuesta);
       if (!r.ok) Alert.alert("No se pudo", r.error === "solicitud_cerrada" ? "Justo se completó ese partido." : (r.error ?? ""));
       else Alert.alert(respuesta === "aceptada" ? "¡Listo!" : "Avisado", respuesta === "aceptada" ? "Te anotaste en el partido." : "Avisamos que no vas.");
       await cargar();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verificarCredenciales } from "@/lib/credenciales";
+import { crearSesionMovil } from "@/lib/sesionesMovil";
 
 // Login real con email+contraseña para el móvil. Separado de /api/auth/**
 // (ahí vive Auth.js, que depende de cookies/redirects — el móvil no puede
@@ -13,5 +14,6 @@ export async function POST(req: NextRequest) {
   const usuario = await verificarCredenciales(email, password);
   if (!usuario) return NextResponse.json({ ok: false, error: "credenciales_invalidas" }, { status: 401 });
 
-  return NextResponse.json({ ok: true, usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol } });
+  const token = await crearSesionMovil(usuario.id);
+  return NextResponse.json({ ok: true, token, usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol } });
 }

@@ -222,6 +222,21 @@ export const solicitudesRival = pgTable("solicitudes_rival", {
   creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Sesiones de la app móvil: token opaco emitido al loguearse (credenciales o
+// dev-login), guardado en el celular y mandado como "Authorization: Bearer
+// <token>". Reemplaza el diseño anterior (el celular mandaba su propio
+// usuarioId en un header y el servidor confiaba a ciegas — cualquiera que
+// supiera el UUID de otro usuario podía actuar como él). Revocar una sesión
+// es simplemente borrar la fila.
+export const sesionesMovil = pgTable("sesiones_movil", {
+  token: text("token").primaryKey(),
+  usuarioId: uuid("usuario_id")
+    .notNull()
+    .references(() => usuarios.id, { onDelete: "cascade" }),
+  creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  expiraEn: timestamp("expira_en", { withTimezone: true }).notNull(),
+});
+
 // Quién fue invitado a una solicitud de rival por estar cerca, y qué
 // respondió. Existe aparte de `participantes_reserva` porque una invitación
 // puede quedar "rechazada" o "pendiente" sin nunca sumar un cupo — y la
@@ -275,6 +290,7 @@ export const dbRelations = defineRelations(
     solicitudInvitaciones,
     rachas,
     authAccounts,
+    sesionesMovil,
   },
   (r) => ({
     complejos: {
@@ -321,6 +337,9 @@ export const dbRelations = defineRelations(
     rachas: {
       usuario: r.one.usuarios({ from: r.rachas.usuarioId, to: r.usuarios.id }),
       complejo: r.one.complejos({ from: r.rachas.complejoId, to: r.complejos.id }),
+    },
+    sesionesMovil: {
+      usuario: r.one.usuarios({ from: r.sesionesMovil.usuarioId, to: r.usuarios.id }),
     },
   }),
 );

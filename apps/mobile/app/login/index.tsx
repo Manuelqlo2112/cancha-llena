@@ -22,11 +22,11 @@ export default function LoginScreen() {
     setError(null);
     try {
       const r = await api.login(email, password);
-      if (!r.ok || !r.usuario) {
+      if (!r.ok || !r.usuario || !r.token) {
         setError(ERRORES[r.error ?? ""] ?? "No se pudo iniciar sesión.");
         return;
       }
-      iniciarSesion(r.usuario);
+      iniciarSesion(r.usuario, r.token);
       // router.back() no tiene a dónde volver si se entró directo a /login
       // (sin pasar por Home antes) — pasa con deep links o al recargar la
       // página estando en esta pantalla.
@@ -69,9 +69,11 @@ export default function LoginScreen() {
       <Link href="/registro" style={styles.link}>
         ¿No tenés cuenta? Crear cuenta
       </Link>
-      <Link href="/login/dev" style={[styles.link, { marginTop: 16, fontSize: 12 }]}>
-        ¿Sos del equipo? Entrar como usuario de prueba
-      </Link>
+      {__DEV__ ? (
+        <Link href="/login/dev" style={[styles.link, { marginTop: 16, fontSize: 12 }]}>
+          ¿Sos del equipo? Entrar como usuario de prueba
+        </Link>
+      ) : null}
     </View>
   );
 }

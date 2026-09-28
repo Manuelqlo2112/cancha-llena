@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth, signIn, signOut } from "@/auth";
 import { registrarConCredenciales } from "@/lib/credenciales";
 import { clearDevSession, setDevSessionUser } from "@/lib/session";
+import { devLoginHabilitado } from "@/lib/devAuth";
 
 export async function signInGoogleAction(formData: FormData) {
   await signIn("google", { redirectTo: String(formData.get("next") ?? "/") || "/" });
@@ -66,6 +67,11 @@ export async function cerrarSesionUniversal() {
 // --- Solo /login/dev ---
 
 export async function iniciarSesionDevAction(formData: FormData) {
+  // Defensa en profundidad: aunque /login/dev ya devuelve 404 si está
+  // apagado, esta action también queda accesible directo — sin este check
+  // alguien podría loguearse como cualquier usuario igual.
+  if (!devLoginHabilitado()) redirect("/login");
+
   const usuarioId = String(formData.get("usuarioId") ?? "");
   const next = String(formData.get("next") ?? "/");
   if (!usuarioId) return;

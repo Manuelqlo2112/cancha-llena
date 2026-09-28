@@ -3,13 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 // La app móvil (Expo) llama a estas rutas desde otro origen: en un teléfono
 // real (Expo Go / build nativo) eso no dispara CORS porque no es un fetch de
 // navegador, pero "expo start --web" corre en el navegador y sí lo dispara.
-// Headers abiertos porque hoy no hay nada sensible detrás (auth de desarrollo,
-// sin cookies) — hay que restringir el origin cuando exista Supabase Auth real.
+// Origin abierto a propósito: la API usa tokens Bearer (lib/apiAuth.ts), no
+// cookies, así que un origin cualquiera no puede robar la sesión de nadie
+// con esto — CORS solo protege flujos basados en cookies del navegador.
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, x-user-id",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
   };
 }
 

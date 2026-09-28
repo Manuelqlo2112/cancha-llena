@@ -1,12 +1,14 @@
 import { NextRequest } from "next/server";
-import { db } from "@cancha-llena/db";
+import { obtenerUsuarioPorToken } from "@/lib/sesionesMovil";
 
 // La app móvil no puede usar la cookie httpOnly de la web (lib/session.ts):
-// manda el id del usuario logueado en un header y listo. Mismo nivel de
-// "seguridad" que el login de la web — cero, a propósito — hasta que exista
-// Supabase Auth con tokens reales; ver la nota en session.ts.
+// manda "Authorization: Bearer <token>" con el token que recibió al
+// loguearse (ver lib/sesionesMovil.ts). Antes esto confiaba directo en un
+// header "x-user-id" mandado por el cliente — cualquiera que supiera el
+// UUID de otro usuario podía actuar como él, sin contraseña ni nada.
 export async function getUserFromRequest(req: NextRequest) {
-  const uid = req.headers.get("x-user-id");
-  if (!uid) return null;
-  return db.query.usuarios.findFirst({ where: { id: uid } }) ?? null;
+  const auth = req.headers.get("authorization");
+  const token = auth?.startsWith("Bearer ") ? auth.slice("Bearer ".length) : null;
+  if (!token) return null;
+  return obtenerUsuarioPorToken(token);
 }

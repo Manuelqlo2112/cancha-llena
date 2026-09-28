@@ -17,7 +17,7 @@ export default function PerfilScreen() {
       // Si la sesión guardada ya no es válida, lib/session.tsx la cierra
       // sola (ver setSesionInvalidaHandler) — acá solo hace falta no dejar
       // el rechazo de la promesa sin atrapar.
-      api.misReservas(usuario.id)
+      api.misReservas()
         .then((r) => vivo && setRachas(r.rachas))
         .catch(() => {});
       return () => {

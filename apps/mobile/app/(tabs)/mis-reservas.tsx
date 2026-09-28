@@ -30,7 +30,7 @@ export default function MisReservasScreen() {
     if (!usuario) return;
     setCargando(true);
     try {
-      const { reservas, rachas } = await api.misReservas(usuario.id);
+      const { reservas, rachas } = await api.misReservas();
       setReservas(reservas);
       setRachas(rachas);
     } catch (e) {
@@ -64,7 +64,7 @@ export default function MisReservasScreen() {
     if (!usuario) return;
     setEnCurso(id);
     try {
-      const r = await api.cancelarReserva(usuario.id, id);
+      const r = await api.cancelarReserva(id);
       if (!r.ok) Alert.alert("No se pudo cancelar", r.error ?? "");
       else {
         Alert.alert("Listo", "Reserva cancelada.");
@@ -79,7 +79,7 @@ export default function MisReservasScreen() {
     if (!usuario) return;
     setEnCurso(id);
     try {
-      const r = await api.buscarRival(usuario.id, id);
+      const r = await api.buscarRival(id);
       if (!r.ok) Alert.alert("No se pudo", r.error ?? "");
       else {
         Alert.alert("Listo", "Avisamos que buscás rival para ese partido.");

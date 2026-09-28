@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { db } from "@cancha-llena/db";
 import { Card } from "@/components/Card";
 import { iniciarSesionDevAction } from "@/app/auth-actions";
+import { devLoginHabilitado } from "@/lib/devAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +12,8 @@ export default async function LoginDevPage({
 }: {
   searchParams: Promise<{ next?: string }>;
 }) {
+  if (!devLoginHabilitado()) notFound();
+
   const { next } = await searchParams;
   const usuarios = await db.query.usuarios.findMany({
     orderBy: { rol: "asc", nombre: "asc" },
