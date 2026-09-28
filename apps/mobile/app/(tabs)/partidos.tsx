@@ -25,6 +25,7 @@ export default function PartidosScreen() {
   const [pidiendoUbicacion, setPidiendoUbicacion] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [enCurso, setEnCurso] = useState<string | null>(null);
+  const [errorCarga, setErrorCarga] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -34,6 +35,11 @@ export default function PartidosScreen() {
       // necesita sesión.
       const { solicitudes } = await api.listarSolicitudes();
       setSolicitudes(solicitudes);
+      setErrorCarga(false);
+    } catch {
+      // Sin esto, un error de red dejaba el spinner de "cargando" girando
+      // para siempre, sin ningún aviso ni forma obvia de reintentar.
+      setErrorCarga(true);
     } finally {
       setCargando(false);
     }
@@ -155,7 +161,11 @@ export default function PartidosScreen() {
       data={solicitudes ?? []}
       keyExtractor={(s) => s.id}
       ListEmptyComponent={
-        !solicitudes ? (
+        errorCarga ? (
+          <View style={styles.center}>
+            <Text style={styles.muted}>No pudimos cargar los partidos — deslizá hacia abajo para reintentar.</Text>
+          </View>
+        ) : !solicitudes ? (
           <ActivityIndicator style={{ marginVertical: 24 }} />
         ) : (
           <View style={styles.center}>

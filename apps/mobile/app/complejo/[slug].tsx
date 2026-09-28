@@ -27,6 +27,7 @@ export default function ComplejoScreen() {
   const { usuario } = useSession();
   const [complejo, setComplejo] = useState<ComplejoDetalle | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(false);
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null);
   const [reservando, setReservando] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
@@ -37,9 +38,12 @@ export default function ComplejoScreen() {
     try {
       const { complejo } = await api.obtenerComplejo(slug);
       setComplejo(complejo);
+      setErrorCarga(false);
       setDiaSeleccionado((actual) => actual ?? complejo.canchas[0]?.slots[0]?.fecha ?? null);
-    } catch (e) {
-      Alert.alert("Error", String(e));
+    } catch {
+      // Sin esto, un error de red al abrir la pantalla dejaba un spinner
+      // girando para siempre — ni retry ni forma de saber qué pasó.
+      setErrorCarga(true);
     } finally {
       setCargando(false);
     }
@@ -94,6 +98,16 @@ export default function ComplejoScreen() {
   }
 
   if (!complejo) {
+    if (errorCarga) {
+      return (
+        <View style={styles.center}>
+          <Text style={styles.muted}>No pudimos cargar este complejo.</Text>
+          <Pressable style={[styles.actionBtn, { backgroundColor: colors.seriesValle, marginTop: 12 }]} onPress={cargar} disabled={cargando}>
+            <Text style={{ color: "white", fontWeight: "600" }}>{cargando ? "Reintentando…" : "Reintentar"}</Text>
+          </Pressable>
+        </View>
+      );
+    }
     return (
       <View style={styles.center}>
         <ActivityIndicator />
@@ -204,6 +218,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: "700", color: colors.textPrimary },
   subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
   muted: { fontSize: 12, color: colors.textMuted },
+  actionBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
   badge: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100, marginTop: 4 },
   badgeText: { color: "white", fontSize: 11, fontWeight: "600" },
 

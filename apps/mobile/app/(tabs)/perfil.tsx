@@ -9,22 +9,20 @@ export default function PerfilScreen() {
   const router = useRouter();
   const { usuario, cerrarSesion } = useSession();
   const [rachas, setRachas] = useState<MiRacha[] | null>(null);
+  const [errorRachas, setErrorRachas] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!usuario) return;
-      let vivo = true;
-      // Si la sesión guardada ya no es válida, lib/session.tsx la cierra
-      // sola (ver setSesionInvalidaHandler) — acá solo hace falta no dejar
-      // el rechazo de la promesa sin atrapar.
-      api.misReservas()
-        .then((r) => vivo && setRachas(r.rachas))
-        .catch(() => {});
-      return () => {
-        vivo = false;
-      };
-    }, [usuario]),
-  );
+  const cargarRachas = useCallback(() => {
+    if (!usuario) return;
+    setErrorRachas(false);
+    // Sesión inválida: lib/session.tsx la cierra sola (ver
+    // setSesionInvalidaHandler). Otros errores dejan de mostrar el
+    // spinner girando para siempre — antes no había forma de reintentar.
+    api.misReservas()
+      .then((r) => setRachas(r.rachas))
+      .catch(() => setErrorRachas(true));
+  }, [usuario]);
+
+  useFocusEffect(cargarRachas);
 
   if (!usuario) {
     return (
@@ -61,7 +59,13 @@ export default function PerfilScreen() {
         </View>
       </View>
 
-      {!rachas ? <ActivityIndicator style={{ marginTop: 16 }} /> : null}
+      {errorRachas ? (
+        <Pressable onPress={cargarRachas} style={{ alignItems: "center", marginTop: 16 }}>
+          <Text style={[styles.muted, { textDecorationLine: "underline" }]}>No se pudo cargar tu racha — tocá para reintentar</Text>
+        </Pressable>
+      ) : !rachas ? (
+        <ActivityIndicator style={{ marginTop: 16 }} />
+      ) : null}
 
       {rachas && rachas.length > 0 ? (
         <View style={{ marginTop: 8 }}>

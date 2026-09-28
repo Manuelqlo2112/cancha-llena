@@ -32,6 +32,7 @@ export default function MisReservasScreen() {
   const [cargando, setCargando] = useState(false);
   const [enCurso, setEnCurso] = useState<string | null>(null);
   const [verTodoHistorial, setVerTodoHistorial] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(false);
 
   const cargar = useCallback(async () => {
     if (!usuario) return;
@@ -40,11 +41,17 @@ export default function MisReservasScreen() {
       const { reservas, rachas } = await api.misReservas();
       setReservas(reservas);
       setRachas(rachas);
+      setErrorCarga(false);
     } catch (e) {
       // Sesión inválida: lib/session.tsx ya la cerró sola (el usuario va a
       // ver la pantalla de "iniciá sesión" apenas cambie ese estado). Otros
-      // errores de red sí los mostramos.
-      if (!(e instanceof SesionInvalidaError)) Alert.alert("No se pudo cargar", "Revisá tu conexión e intentá de nuevo.");
+      // errores de red sí los mostramos, y dejan de mostrar el spinner de
+      // "vacio" girando para siempre (antes se quedaba así hasta que se
+      // hiciera pull-to-refresh, sin ninguna pista de que había fallado).
+      if (!(e instanceof SesionInvalidaError)) {
+        Alert.alert("No se pudo cargar", "Revisá tu conexión e intentá de nuevo.");
+        setErrorCarga(true);
+      }
     } finally {
       setCargando(false);
     }
@@ -146,7 +153,11 @@ export default function MisReservasScreen() {
         }
         if (item.tipo === "header") return <Text style={styles.sectionTitle}>Próximas</Text>;
         if (item.tipo === "historial-header") return <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Historial</Text>;
-        if (item.tipo === "vacio") return !reservas ? <ActivityIndicator style={{ marginVertical: 24 }} /> : <Text style={styles.muted}>Todavía no tenés partidos agendados.</Text>;
+        if (item.tipo === "vacio") {
+          if (errorCarga) return <Text style={styles.muted}>No pudimos cargar tus reservas — deslizá hacia abajo para reintentar.</Text>;
+          if (!reservas) return <ActivityIndicator style={{ marginVertical: 24 }} />;
+          return <Text style={styles.muted}>Todavía no tenés partidos agendados.</Text>;
+        }
 
         const { r, accionable } = item;
         const busy = enCurso === r.id;
