@@ -10,9 +10,13 @@ export default function LoginDevScreen() {
   const { usuario, iniciarSesion, cerrarSesion } = useSession();
   const [jugadores, setJugadores] = useState<Jugador[] | null>(null);
   const [entrando, setEntrando] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    api.listarJugadoresDev().then((r) => setJugadores(r.jugadores));
+    api
+      .listarJugadoresDev()
+      .then((r) => setJugadores(r.jugadores))
+      .catch(() => setError(true));
   }, []);
 
   async function onElegir(jugador: Jugador) {
@@ -29,6 +33,8 @@ export default function LoginDevScreen() {
       iniciarSesion(r.usuario, r.token);
       if (router.canGoBack()) router.back();
       else router.replace("/");
+    } catch {
+      Alert.alert("No se pudo entrar", "Revisá tu conexión e intentá de nuevo.");
     } finally {
       setEntrando(null);
     }
@@ -44,7 +50,13 @@ export default function LoginDevScreen() {
         </Pressable>
       ) : null}
 
-      {!jugadores ? <ActivityIndicator style={{ marginTop: 24 }} /> : null}
+      {error ? (
+        <Text style={[styles.cardSubtitle, { marginTop: 24, textAlign: "center" }]}>
+          No se pudo cargar la lista — puede que el login de desarrollo esté apagado en el servidor.
+        </Text>
+      ) : !jugadores ? (
+        <ActivityIndicator style={{ marginTop: 24 }} />
+      ) : null}
 
       <FlatList
         data={jugadores ?? []}

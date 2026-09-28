@@ -84,6 +84,8 @@ export default function MisReservasScreen() {
         Alert.alert("Listo", "Reserva cancelada.");
         await cargar();
       }
+    } catch {
+      Alert.alert("No se pudo cancelar", "Revisá tu conexión e intentá de nuevo.");
     } finally {
       setEnCurso(null);
     }
@@ -99,6 +101,8 @@ export default function MisReservasScreen() {
         Alert.alert("Listo", "Avisamos que buscás rival para ese partido.");
         await cargar();
       }
+    } catch {
+      Alert.alert("No se pudo", "Revisá tu conexión e intentá de nuevo.");
     } finally {
       setEnCurso(null);
     }

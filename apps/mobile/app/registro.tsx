@@ -31,6 +31,8 @@ export default function RegistroScreen() {
       iniciarSesion(r.usuario, r.token);
       if (router.canGoBack()) router.back();
       else router.replace("/");
+    } catch {
+      setError("No se pudo conectar — revisá tu conexión e intentá de nuevo.");
     } finally {
       setCargando(false);
     }

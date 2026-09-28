@@ -32,6 +32,8 @@ export default function LoginScreen() {
       // página estando en esta pantalla.
       if (router.canGoBack()) router.back();
       else router.replace("/");
+    } catch {
+      setError("No se pudo conectar — revisá tu conexión e intentá de nuevo.");
     } finally {
       setCargando(false);
     }

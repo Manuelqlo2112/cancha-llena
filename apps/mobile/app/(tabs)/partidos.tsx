@@ -76,6 +76,8 @@ export default function PartidosScreen() {
       setUbicacionActiva(true);
       Alert.alert("Listo", "Te vamos a avisar de partidos cerca tuyo.");
       await cargar();
+    } catch {
+      Alert.alert("No se pudo activar", "Revisá tu conexión e intentá de nuevo.");
     } finally {
       setPidiendoUbicacion(false);
     }
@@ -91,6 +93,8 @@ export default function PartidosScreen() {
         Alert.alert("Listo", "Te anotaste en el partido.");
         await cargar();
       }
+    } catch {
+      Alert.alert("No se pudo unir", "Revisá tu conexión e intentá de nuevo.");
     } finally {
       setEnCurso(null);
     }
@@ -104,6 +108,8 @@ export default function PartidosScreen() {
       if (!r.ok) Alert.alert("No se pudo", r.error === "solicitud_cerrada" ? "Justo se completó ese partido." : (r.error ?? ""));
       else Alert.alert(respuesta === "aceptada" ? "¡Listo!" : "Avisado", respuesta === "aceptada" ? "Te anotaste en el partido." : "Avisamos que no vas.");
       await cargar();
+    } catch {
+      Alert.alert("No se pudo", "Revisá tu conexión e intentá de nuevo.");
     } finally {
       setEnCurso(null);
     }

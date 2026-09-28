@@ -30,6 +30,17 @@ export function setSesionInvalidaHandler(fn: (() => void) | null) {
   manejarSesionInvalida = fn;
 }
 
+// Lleva el status HTTP para que la pantalla pueda distinguir "no existe"
+// (404 — reintentar no sirve de nada) de una falla de red real (sí vale la
+// pena reintentar).
+export class RequestError extends Error {
+  status: number;
+  constructor(status: number, statusText: string) {
+    super(`${status} ${statusText}`);
+    this.status = status;
+  }
+}
+
 // Token de sesión móvil (ver apps/web/lib/sesionesMovil.ts) — reemplaza el
 // diseño anterior, donde el celular mandaba su propio usuarioId en un header
 // y el servidor confiaba a ciegas (cualquiera que supiera el UUID de otro
@@ -132,7 +143,17 @@ export type MiRacha = {
   vigente: boolean;
 };
 
-async function request<T>(path: string, options: { method?: string; body?: unknown; requiereSesion?: boolean } = {}): Promise<T> {
+// Endpoints cuya respuesta de éxito tiene SIEMPRE la misma forma fija (p. ej.
+// {complejo}, {reservas,rachas}) — a diferencia de los de acción
+// (reservar, cancelar, etc.) que devuelven {ok,error} tanto en éxito como en
+// error, y cuyos llamadores ya chequean `r.ok` a mano. Para estos, CUALQUIER
+// respuesta no-ok tiene una forma distinta a la esperada — antes eso se leía
+// como si fuera válida (p. ej. `complejo` quedaba `undefined` en vez de
+// avisar del error) y la pantalla se quedaba esperando datos que nunca iban
+// a llegar.
+type RequestOptions = { method?: string; body?: unknown; requiereSesion?: boolean; formaFija?: boolean };
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
     headers: {
@@ -142,18 +163,14 @@ async function request<T>(path: string, options: { method?: string; body?: unkno
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
-  // Solo para endpoints cuya respuesta de éxito NO tiene la forma {ok,error}
-  // (misReservas, listarInvitaciones): ahí un 401 devuelve un cuerpo con una
-  // forma distinta a la esperada, y antes se leía como si fuera válida. Los
-  // endpoints de acción (reservar, cancelar, etc.) ya devuelven {ok,error}
-  // tanto en éxito como en 401 — esos siguen su camino normal, sin excepción.
   if (options.requiereSesion && res.status === 401) {
     manejarSesionInvalida?.();
     throw new SesionInvalidaError("Tu sesión ya no es válida");
   }
+  if (options.formaFija && !res.ok) throw new RequestError(res.status, res.statusText);
 
   const data = await res.json().catch(() => null);
-  if (!res.ok && !data) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok && !data) throw new RequestError(res.status, res.statusText);
   return data as T;
 }
 
@@ -171,22 +188,22 @@ export const api = {
     }),
   logout: () => request<{ ok: boolean }>("/api/mobile-auth/logout", { method: "POST" }),
   // Atajo de desarrollo, sin contraseña — /login/dev.
-  listarJugadoresDev: () => request<{ jugadores: Jugador[] }>("/api/dev/login"),
+  listarJugadoresDev: () => request<{ jugadores: Jugador[] }>("/api/dev/login", { formaFija: true }),
   loginDev: (usuarioId: string) =>
     request<{ ok: boolean; token?: string; usuario?: Jugador & { rol: string } }>("/api/dev/login", { method: "POST", body: { usuarioId } }),
-  listarComplejos: () => request<{ complejos: ComplejoResumen[] }>("/api/complejos"),
-  obtenerComplejo: (slug: string) => request<{ complejo: ComplejoDetalle }>(`/api/complejos/${slug}`),
+  listarComplejos: () => request<{ complejos: ComplejoResumen[] }>("/api/complejos", { formaFija: true }),
+  obtenerComplejo: (slug: string) => request<{ complejo: ComplejoDetalle }>(`/api/complejos/${slug}`, { formaFija: true }),
   reservar: (canchaId: string, fecha: string, hora: string) =>
     request<{ ok: boolean; reservaId?: string; error?: string }>("/api/reservas", { method: "POST", body: { canchaId, fecha, hora } }),
   unirseSolicitud: (solicitudId: string) =>
     request<{ ok: boolean; error?: string }>(`/api/solicitudes/${solicitudId}/unirse`, { method: "POST" }),
-  listarSolicitudes: () => request<{ solicitudes: SolicitudAbierta[] }>("/api/solicitudes"),
-  misReservas: () => request<{ reservas: MiReserva[]; rachas: MiRacha[] }>("/api/reservas/mias", { requiereSesion: true }),
+  listarSolicitudes: () => request<{ solicitudes: SolicitudAbierta[] }>("/api/solicitudes", { formaFija: true }),
+  misReservas: () => request<{ reservas: MiReserva[]; rachas: MiRacha[] }>("/api/reservas/mias", { requiereSesion: true, formaFija: true }),
   cancelarReserva: (reservaId: string) => request<{ ok: boolean; error?: string }>(`/api/reservas/${reservaId}/cancelar`, { method: "POST" }),
   buscarRival: (reservaId: string) =>
     request<{ ok: boolean; solicitudId?: string; invitados?: number; error?: string }>(`/api/reservas/${reservaId}/buscar-rival`, { method: "POST" }),
   actualizarUbicacion: (lat: number, lng: number) => request<{ ok: boolean; error?: string }>("/api/ubicacion", { method: "POST", body: { lat, lng } }),
-  listarInvitaciones: () => request<{ invitaciones: InvitacionPendiente[] }>("/api/invitaciones", { requiereSesion: true }),
+  listarInvitaciones: () => request<{ invitaciones: InvitacionPendiente[] }>("/api/invitaciones", { requiereSesion: true, formaFija: true }),
   responderInvitacion: (invitacionId: string, respuesta: "aceptada" | "rechazada") =>
     request<{ ok: boolean; unido?: boolean; error?: string }>(`/api/invitaciones/${invitacionId}/responder`, { method: "POST", body: { respuesta } }),
 };

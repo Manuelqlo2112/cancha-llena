@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { api, type ComplejoDetalle } from "@/lib/api";
+import { api, RequestError, type ComplejoDetalle } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
 import { formatCLP } from "@/lib/format";
@@ -27,7 +27,7 @@ export default function ComplejoScreen() {
   const { usuario } = useSession();
   const [complejo, setComplejo] = useState<ComplejoDetalle | null>(null);
   const [cargando, setCargando] = useState(false);
-  const [errorCarga, setErrorCarga] = useState(false);
+  const [errorCarga, setErrorCarga] = useState<"red" | "no_existe" | null>(null);
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null);
   const [reservando, setReservando] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
@@ -38,12 +38,14 @@ export default function ComplejoScreen() {
     try {
       const { complejo } = await api.obtenerComplejo(slug);
       setComplejo(complejo);
-      setErrorCarga(false);
+      setErrorCarga(null);
       setDiaSeleccionado((actual) => actual ?? complejo.canchas[0]?.slots[0]?.fecha ?? null);
-    } catch {
+    } catch (e) {
       // Sin esto, un error de red al abrir la pantalla dejaba un spinner
-      // girando para siempre — ni retry ni forma de saber qué pasó.
-      setErrorCarga(true);
+      // girando para siempre — ni retry ni forma de saber qué pasó. Un 404
+      // (el complejo no existe) es distinto de una falla de red: reintentar
+      // ahí no tiene sentido, así que se distingue el mensaje.
+      setErrorCarga(e instanceof RequestError && e.status === 404 ? "no_existe" : "red");
     } finally {
       setCargando(false);
     }
@@ -76,6 +78,11 @@ export default function ComplejoScreen() {
       await cargar();
       // En vez de un simple "listo", preguntamos ahí mismo si falta gente.
       setPendingConfirm({ reservaId: r.reservaId, canchaNombre, fecha, hora });
+    } catch {
+      // Sin este catch, un error de red acá quedaba como una promesa
+      // rechazada sin atrapar: el botón se destrababa (por el finally) pero
+      // el usuario nunca se enteraba de que la reserva no se hizo.
+      Alert.alert("No se pudo reservar", "Revisá tu conexión e intentá de nuevo.");
     } finally {
       setReservando(null);
     }
@@ -92,13 +99,25 @@ export default function ComplejoScreen() {
       } else {
         Alert.alert("No se pudo", r.error ?? "");
       }
+    } catch {
+      Alert.alert("No se pudo", "Revisá tu conexión e intentá de nuevo.");
     } finally {
       setEnviandoSolicitud(false);
     }
   }
 
   if (!complejo) {
-    if (errorCarga) {
+    if (errorCarga === "no_existe") {
+      return (
+        <View style={styles.center}>
+          <Text style={styles.muted}>Este complejo ya no existe o cambió de dirección.</Text>
+          <Pressable style={[styles.actionBtn, { backgroundColor: colors.seriesValle, marginTop: 12 }]} onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>
+            <Text style={{ color: "white", fontWeight: "600" }}>Volver</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    if (errorCarga === "red") {
       return (
         <View style={styles.center}>
           <Text style={styles.muted}>No pudimos cargar este complejo.</Text>
