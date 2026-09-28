@@ -13,8 +13,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const lat = Number(body?.lat);
   const lng = Number(body?.lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return NextResponse.json({ ok: false, error: "coordenadas invalidas" }, { status: 400 });
 
-  await actualizarUbicacion(usuario.id, lat, lng);
+  // actualizarUbicacion valida el rango geográfico — acá solo se traduce
+  // ese resultado al código de estado HTTP.
+  const resultado = await actualizarUbicacion(usuario.id, lat, lng);
+  if (!resultado.ok) return NextResponse.json({ ok: false, error: "coordenadas invalidas" }, { status: 400 });
   return NextResponse.json({ ok: true });
 }

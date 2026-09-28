@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@cancha-llena/db";
-import { crearReserva } from "@/lib/reservas";
+import { actualizarUbicacion, crearReserva } from "@/lib/reservas";
 import { crearCanchaFixture, crearComplejoFixture, crearUsuarioFixture, fechaRelativa, resetDb } from "./helpers";
 
 beforeEach(resetDb);
@@ -75,5 +75,29 @@ describe("crearReserva", () => {
 
     const pago = await db.query.pagos.findFirst({ where: { reservaId: r.reservaId } });
     expect(pago).toBeUndefined();
+  });
+});
+
+describe("actualizarUbicacion", () => {
+  it("guarda coordenadas válidas", async () => {
+    const jugador = await crearUsuarioFixture();
+    const r = await actualizarUbicacion(jugador.id, -33.45, -70.66);
+    expect(r).toEqual({ ok: true });
+
+    const actualizado = await db.query.usuarios.findFirst({ where: { id: jugador.id } });
+    expect(Number(actualizado?.ultimaLat)).toBeCloseTo(-33.45);
+    expect(Number(actualizado?.ultimaLng)).toBeCloseTo(-70.66);
+  });
+
+  it("rechaza coordenadas fuera de rango o NaN sin guardar nada", async () => {
+    const jugador = await crearUsuarioFixture();
+
+    for (const [lat, lng] of [[999, -70.66], [-33.45, 999], [NaN, -70.66], [-33.45, NaN]] as const) {
+      const r = await actualizarUbicacion(jugador.id, lat, lng);
+      expect(r).toEqual({ ok: false });
+    }
+
+    const sinCambios = await db.query.usuarios.findFirst({ where: { id: jugador.id } });
+    expect(sinCambios?.ultimaLat).toBeNull();
   });
 });

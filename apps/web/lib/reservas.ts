@@ -376,11 +376,20 @@ export async function obtenerSolicitudesAbiertas(usuarioId: string | null): Prom
     .sort((a, b) => `${a.fecha}${a.horaInicio}`.localeCompare(`${b.fecha}${b.horaInicio}`));
 }
 
-export async function actualizarUbicacion(usuarioId: string, lat: number, lng: number): Promise<void> {
+// Coordenadas fuera de rango geográfico (o NaN) no deberían llegar nunca
+// desde un navegador/GPS real, pero esto también lo llama la API que
+// consume el móvil — un cliente cualquiera puede mandar lo que quiera. Sin
+// este chequeo, un valor así se guardaba igual y después corrompía el
+// cálculo de distancia (haversine) usado para invitar a jugadores cerca.
+export async function actualizarUbicacion(usuarioId: string, lat: number, lng: number): Promise<{ ok: boolean }> {
+  const valida = Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  if (!valida) return { ok: false };
+
   await db
     .update(usuarios)
     .set({ ultimaLat: lat.toFixed(6), ultimaLng: lng.toFixed(6), ultimaUbicacionEn: new Date() })
     .where(eq(usuarios.id, usuarioId));
+  return { ok: true };
 }
 
 export type InvitacionPendiente = {

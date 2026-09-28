@@ -13,6 +13,7 @@ const MENSAJES: Record<string, string> = {
   error_solicitud_cerrada: "Esa búsqueda de rival ya se cerró — llegaste justo tarde.",
   error_ya_respondida: "Ya habías respondido esa invitación.",
   error_no_encontrada: "Esa invitación ya no existe.",
+  error_coordenadas_invalidas: "No pudimos usar esa ubicación — probá de nuevo.",
 };
 
 // Pantalla separada del flujo de reservar (que es puro calendario): acá se

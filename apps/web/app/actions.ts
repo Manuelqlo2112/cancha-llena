@@ -90,9 +90,12 @@ export async function actualizarUbicacionAction(formData: FormData) {
   const lng = Number(formData.get("lng"));
 
   const session = await getSessionUser();
-  if (!session || !Number.isFinite(lat) || !Number.isFinite(lng)) redirect("/partidos");
+  if (!session) redirect("/partidos");
 
-  await actualizarUbicacion(session.id, lat, lng);
+  // actualizarUbicacion valida el rango geográfico (y NaN) por su cuenta.
+  const resultado = await actualizarUbicacion(session.id, lat, lng);
+  if (!resultado.ok) redirect("/partidos?error=coordenadas_invalidas");
+
   revalidatePath("/partidos");
   redirect("/partidos?ubicacion=1");
 }
