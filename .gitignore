@@ -9,3 +9,5 @@ packages/db/pgdata
 .turbo
 .expo
 apps/mobile/.expo
+.vercel
+apps/web/.vercel
