@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { actualizarUbicacion, cancelarReserva, crearReserva, crearSolicitudRival, responderInvitacion, unirseSolicitud } from "@/lib/reservas";
+import { actualizarUbicacion, cancelarReserva, crearReserva, crearSolicitudRival, invitarRivalDirecto, responderInvitacion, unirseSolicitud } from "@/lib/reservas";
 import { inscribirseALiga, salirDeLiga } from "@/lib/ligas";
 import { obtenerReservaParaReportar, reportarResultado } from "@/lib/resultados";
 import { getSessionUser } from "@/lib/session";
@@ -71,6 +71,19 @@ export async function buscarRivalAction(formData: FormData) {
   revalidatePath("/mis-reservas");
   if (returnTo) revalidatePath(`/complejos/${returnTo}`);
   redirect(resultado.ok ? destinoOk : `${destinoBase}?error=${resultado.error}`);
+}
+
+export async function invitarRivalAction(formData: FormData) {
+  const solicitudId = String(formData.get("solicitudId") ?? "");
+  const rivalId = String(formData.get("rivalId") ?? "");
+
+  const session = await getSessionUser();
+  if (!session) redirect("/login?next=/mis-reservas");
+
+  const resultado = await invitarRivalDirecto(session.id, solicitudId, rivalId);
+
+  revalidatePath("/mis-reservas");
+  redirect(resultado.ok ? "/mis-reservas?invitado=1" : `/mis-reservas?error=${resultado.error}`);
 }
 
 export async function responderInvitacionAction(formData: FormData) {

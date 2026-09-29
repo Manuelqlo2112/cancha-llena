@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@cancha-llena/db";
-import { cancelarReserva, crearReserva, crearSolicitudRival, unirseSolicitud } from "@/lib/reservas";
+import { cancelarReserva, crearReserva, crearSolicitudRival, invitarRivalDirecto, unirseSolicitud } from "@/lib/reservas";
 import { crearCanchaFixture, crearComplejoFixture, crearUsuarioFixture, fechaRelativa, resetDb } from "./helpers";
 
 beforeEach(resetDb);
@@ -75,6 +75,82 @@ describe("crearSolicitudRival", () => {
     expect(invitados).toContain(cerca.id);
     expect(invitados).not.toContain(lejos.id);
     expect(invitados).not.toContain(sinUbicacion.id);
+  });
+});
+
+describe("invitarRivalDirecto", () => {
+  it("crea la invitación directa aunque el rival esté lejos o sin ubicación", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    const solicitud = await crearSolicitudRival(organizador.id, reservaId);
+    if (!solicitud.ok) throw new Error("fixture");
+    const rival = await crearUsuarioFixture({ ultimaLat: "-34.600000", ultimaLng: "-71.500000" }); // lejos a propósito
+
+    const r = await invitarRivalDirecto(organizador.id, solicitud.solicitudId, rival.id);
+    expect(r).toEqual({ ok: true });
+
+    const invitacion = await db.query.solicitudInvitaciones.findFirst({ where: { solicitudId: solicitud.solicitudId, usuarioId: rival.id } });
+    expect(invitacion?.estado).toBe("pendiente");
+    expect(invitacion?.distanciaKm).toBeNull();
+  });
+
+  it("un participante (no solo el organizador) también puede invitar", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    const solicitud = await crearSolicitudRival(organizador.id, reservaId);
+    if (!solicitud.ok) throw new Error("fixture");
+    const participante = await crearUsuarioFixture();
+    await unirseSolicitud(participante.id, solicitud.solicitudId);
+    const rival = await crearUsuarioFixture();
+
+    const r = await invitarRivalDirecto(participante.id, solicitud.solicitudId, rival.id);
+    expect(r).toEqual({ ok: true });
+  });
+
+  it("rechaza a alguien ajeno a la reserva", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    const solicitud = await crearSolicitudRival(organizador.id, reservaId);
+    if (!solicitud.ok) throw new Error("fixture");
+    const ajeno = await crearUsuarioFixture();
+    const rival = await crearUsuarioFixture();
+
+    const r = await invitarRivalDirecto(ajeno.id, solicitud.solicitudId, rival.id);
+    expect(r).toEqual({ ok: false, error: "sin_permiso" });
+  });
+
+  it("rechaza invitar a alguien que ya es participante", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    const solicitud = await crearSolicitudRival(organizador.id, reservaId);
+    if (!solicitud.ok) throw new Error("fixture");
+    const yaParticipa = await crearUsuarioFixture();
+    await unirseSolicitud(yaParticipa.id, solicitud.solicitudId);
+
+    const r = await invitarRivalDirecto(organizador.id, solicitud.solicitudId, yaParticipa.id);
+    expect(r).toEqual({ ok: false, error: "rival_invalido" });
+  });
+
+  it("invitar dos veces a la misma persona no falla, solo no hace nada de nuevo", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    const solicitud = await crearSolicitudRival(organizador.id, reservaId);
+    if (!solicitud.ok) throw new Error("fixture");
+    const rival = await crearUsuarioFixture();
+
+    await invitarRivalDirecto(organizador.id, solicitud.solicitudId, rival.id);
+    const segunda = await invitarRivalDirecto(organizador.id, solicitud.solicitudId, rival.id);
+    expect(segunda).toEqual({ ok: true });
+
+    const invitaciones = await db.query.solicitudInvitaciones.findMany({ where: { solicitudId: solicitud.solicitudId, usuarioId: rival.id } });
+    expect(invitaciones).toHaveLength(1);
+  });
+
+  it("rechaza si la solicitud ya no está abierta", async () => {
+    const { organizador, reservaId } = await reservarFixture(2); // 1 cupo libre tras el organizador
+    const solicitud = await crearSolicitudRival(organizador.id, reservaId);
+    if (!solicitud.ok) throw new Error("fixture");
+    const rival = await crearUsuarioFixture();
+    await unirseSolicitud(rival.id, solicitud.solicitudId); // llena el único cupo → la cierra
+
+    const otro = await crearUsuarioFixture();
+    const r = await invitarRivalDirecto(organizador.id, solicitud.solicitudId, otro.id);
+    expect(r).toEqual({ ok: false, error: "solicitud_cerrada" });
   });
 });
 

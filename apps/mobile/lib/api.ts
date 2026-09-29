@@ -234,6 +234,8 @@ export const api = {
   cancelarReserva: (reservaId: string) => request<{ ok: boolean; error?: string }>(`/api/reservas/${reservaId}/cancelar`, { method: "POST" }),
   buscarRival: (reservaId: string) =>
     request<{ ok: boolean; solicitudId?: string; invitados?: number; error?: string }>(`/api/reservas/${reservaId}/buscar-rival`, { method: "POST" }),
+  invitarRival: (solicitudId: string, rivalId: string) =>
+    request<{ ok: boolean; error?: string }>(`/api/solicitudes/${solicitudId}/invitar`, { method: "POST", body: { rivalId } }),
   actualizarUbicacion: (lat: number, lng: number) => request<{ ok: boolean; error?: string }>("/api/ubicacion", { method: "POST", body: { lat, lng } }),
   listarInvitaciones: () => request<{ invitaciones: InvitacionPendiente[] }>("/api/invitaciones", { requiereSesion: true, formaFija: true }),
   responderInvitacion: (invitacionId: string, respuesta: "aceptada" | "rechazada") =>

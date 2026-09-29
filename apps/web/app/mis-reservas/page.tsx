@@ -4,7 +4,8 @@ import { Badge } from "@/components/Badge";
 import { DEPORTE_LABEL, ESTADO_RESERVA, formatCLP, formatFechaCorta, formatHora } from "@/lib/format";
 import { getSessionUser } from "@/lib/session";
 import { obtenerMisRachas, obtenerMisReservas } from "@/lib/reservas";
-import { buscarRivalAction, cancelarReservaAction } from "@/app/actions";
+import { obtenerRivales } from "@/lib/resultados";
+import { buscarRivalAction, cancelarReservaAction, invitarRivalAction } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,18 +19,21 @@ const MENSAJES: Record<string, string> = {
   cancelado: "Reserva cancelada.",
   solicitud: "Listo — avisamos que buscás rival para ese partido.",
   resultado: "Resultado reportado — el nivel se actualizó.",
+  invitado: "Listo — le mandamos la invitación directa.",
   error_no_encontrada: "Esa reserva ya no existe.",
   error_sin_permiso: "Esa reserva no es tuya.",
   error_ya_paso: "Ya no se puede modificar (es de hoy o ya pasó).",
   error_ya_cancelada: "Esa reserva ya estaba cancelada.",
   error_ya_existe: "Ya hay una búsqueda de rival abierta para ese partido.",
   error_sin_cupos: "Esa cancha ya está completa.",
+  error_solicitud_cerrada: "Esa búsqueda de rival ya no está abierta.",
+  error_rival_invalido: "Ese jugador ya está en el partido.",
 };
 
 export default async function MisReservasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cancelado?: string; solicitud?: string; resultado?: string; error?: string }>;
+  searchParams: Promise<{ cancelado?: string; solicitud?: string; resultado?: string; invitado?: string; error?: string }>;
 }) {
   const session = await getSessionUser();
   const sp = await searchParams;
@@ -39,9 +43,11 @@ export default async function MisReservasPage({
       ? MENSAJES.solicitud
       : sp.resultado
         ? MENSAJES.resultado
-        : sp.error
-          ? MENSAJES[`error_${sp.error}`]
-          : null;
+        : sp.invitado
+          ? MENSAJES.invitado
+          : sp.error
+            ? MENSAJES[`error_${sp.error}`]
+            : null;
 
   if (!session) {
     return (
@@ -57,7 +63,7 @@ export default async function MisReservasPage({
     );
   }
 
-  const [reservas, rachas] = await Promise.all([obtenerMisReservas(session.id), obtenerMisRachas(session.id)]);
+  const [reservas, rachas, rivales] = await Promise.all([obtenerMisReservas(session.id), obtenerMisRachas(session.id), obtenerRivales(session.id)]);
   const hoyISO = new Date().toISOString().slice(0, 10);
   const proximas = reservas.filter((r) => r.fecha >= hoyISO && r.estado !== "cancelada");
   const pasadas = reservas.filter((r) => r.fecha < hoyISO || r.estado === "cancelada");
@@ -124,7 +130,7 @@ export default async function MisReservasPage({
         ) : (
           <div className="flex flex-col gap-2">
             {proximas.map((r) => (
-              <ReservaRow key={r.id} r={r} accionable />
+              <ReservaRow key={r.id} r={r} accionable rivales={rivales} />
             ))}
           </div>
         )}
@@ -156,7 +162,15 @@ export default async function MisReservasPage({
   );
 }
 
-function ReservaRow({ r, accionable }: { r: Awaited<ReturnType<typeof obtenerMisReservas>>[number]; accionable: boolean }) {
+function ReservaRow({
+  r,
+  accionable,
+  rivales = [],
+}: {
+  r: Awaited<ReturnType<typeof obtenerMisReservas>>[number];
+  accionable: boolean;
+  rivales?: Awaited<ReturnType<typeof obtenerRivales>>;
+}) {
   const estado = ESTADO_RESERVA[r.estado] ?? { label: r.estado, tone: "muted" as const };
   return (
     <Card>
@@ -208,6 +222,29 @@ function ReservaRow({ r, accionable }: { r: Awaited<ReturnType<typeof obtenerMis
           ) : null}
         </div>
       </div>
+
+      {r.solicitudAbiertaId && rivales.length > 0 ? (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs underline" style={{ color: "var(--text-secondary)" }}>
+            Desafiar directo a un rival anterior
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {rivales.slice(0, 5).map((riv) => (
+              <form key={riv.rivalId} action={invitarRivalAction}>
+                <input type="hidden" name="solicitudId" value={r.solicitudAbiertaId!} />
+                <input type="hidden" name="rivalId" value={riv.rivalId} />
+                <button
+                  type="submit"
+                  className="rounded-md px-2.5 py-1 text-xs"
+                  style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}
+                >
+                  {riv.rivalNombre} ({riv.victorias}V {riv.empates}E {riv.derrotas}D)
+                </button>
+              </form>
+            ))}
+          </div>
+        </details>
+      ) : null}
     </Card>
   );
 }

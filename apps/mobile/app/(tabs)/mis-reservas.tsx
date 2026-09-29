@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { api, SesionInvalidaError, type MiRacha, type MiReserva, type ReservaParaReportar } from "@/lib/api";
+import { api, SesionInvalidaError, type MiRacha, type MiReserva, type ReservaParaReportar, type RivalHistorial } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
 import { formatCLP, formatHora } from "@/lib/format";
@@ -29,6 +29,7 @@ export default function MisReservasScreen() {
   const { usuario } = useSession();
   const [reservas, setReservas] = useState<MiReserva[] | null>(null);
   const [rachas, setRachas] = useState<MiRacha[]>([]);
+  const [rivales, setRivales] = useState<RivalHistorial[]>([]);
   const [cargando, setCargando] = useState(false);
   const [enCurso, setEnCurso] = useState<string | null>(null);
   const [verTodoHistorial, setVerTodoHistorial] = useState(false);
@@ -44,9 +45,10 @@ export default function MisReservasScreen() {
     if (!usuario) return;
     setCargando(true);
     try {
-      const { reservas, rachas } = await api.misReservas();
+      const { reservas, rachas, rivales } = await api.misReservas();
       setReservas(reservas);
       setRachas(rachas);
+      setRivales(rivales);
       setErrorCarga(false);
     } catch (e) {
       // Sesión inválida: lib/session.tsx ya la cerró sola (el usuario va a
@@ -109,6 +111,19 @@ export default function MisReservasScreen() {
       }
     } catch {
       Alert.alert("No se pudo", "Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      setEnCurso(null);
+    }
+  }
+
+  async function onInvitarRival(solicitudId: string, rivalId: string, rivalNombre: string) {
+    setEnCurso(solicitudId);
+    try {
+      const r = await api.invitarRival(solicitudId, rivalId);
+      if (!r.ok) Alert.alert("No se pudo invitar", r.error ?? "");
+      else Alert.alert("Listo", `Le mandamos la invitación a ${rivalNombre}.`);
+    } catch {
+      Alert.alert("No se pudo invitar", "Revisá tu conexión e intentá de nuevo.");
     } finally {
       setEnCurso(null);
     }
@@ -248,6 +263,28 @@ export default function MisReservasScreen() {
                     <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>Reportar resultado</Text>
                   </Pressable>
                 ) : null}
+              </View>
+            ) : null}
+            {r.solicitudAbiertaId && rivales.length > 0 ? (
+              <View style={{ marginTop: 8 }}>
+                <Text style={[styles.muted, { marginBottom: 4 }]}>Desafiar directo a un rival anterior:</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {rivales.slice(0, 5).map((riv) => {
+                    const invitando = enCurso === r.solicitudAbiertaId;
+                    return (
+                      <Pressable
+                        key={riv.rivalId}
+                        disabled={invitando}
+                        style={[styles.actionBtn, { backgroundColor: colors.chartSurface, borderWidth: 1, borderColor: colors.gridline, opacity: invitando ? 0.6 : 1 }]}
+                        onPress={() => onInvitarRival(r.solicitudAbiertaId!, riv.rivalId, riv.rivalNombre)}
+                      >
+                        <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
+                          {riv.rivalNombre} ({riv.victorias}V {riv.empates}E {riv.derrotas}D)
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
             ) : null}
           </View>

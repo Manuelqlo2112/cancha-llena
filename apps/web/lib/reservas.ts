@@ -245,6 +245,38 @@ export async function crearSolicitudRival(usuarioId: string, reservaId: string):
   return { ok: true, solicitudId: solicitud!.id, invitados };
 }
 
+export type InvitarRivalResult = { ok: true } | { ok: false; error: "no_encontrada" | "sin_permiso" | "solicitud_cerrada" | "rival_invalido" };
+
+// Fase 3 (red, Sección 06 del doc de producto): un desafío directo a
+// alguien puntual con quien ya se jugó antes (ver obtenerRivales en
+// resultados.ts), no solo el broadcast por cercanía geográfica de
+// invitarJugadoresCercanos. Reusa la misma tabla — distanciaKm null marca
+// que es una invitación directa, no por radio — así que la pestaña de
+// Partidos/Invitaciones del rival ya sabe mostrarla sin cambios.
+export async function invitarRivalDirecto(usuarioId: string, solicitudId: string, rivalId: string): Promise<InvitarRivalResult> {
+  if (!esUuid(solicitudId) || !esUuid(rivalId)) return { ok: false, error: "no_encontrada" };
+  const solicitud = await db.query.solicitudesRival.findFirst({
+    where: { id: solicitudId },
+    with: { reserva: { with: { participantes: true } } },
+  });
+  if (!solicitud || !solicitud.reserva) return { ok: false, error: "no_encontrada" };
+
+  const esParticipante = solicitud.reserva.usuarioId === usuarioId || solicitud.reserva.participantes.some((p) => p.usuarioId === usuarioId);
+  if (!esParticipante) return { ok: false, error: "sin_permiso" };
+  if (solicitud.estado !== "abierta") return { ok: false, error: "solicitud_cerrada" };
+
+  const yaEsParticipante = solicitud.reserva.participantes.some((p) => p.usuarioId === rivalId);
+  if (yaEsParticipante) return { ok: false, error: "rival_invalido" };
+  const rival = await db.query.usuarios.findFirst({ where: { id: rivalId, rol: "jugador" } });
+  if (!rival) return { ok: false, error: "rival_invalido" };
+
+  // onConflictDoNothing: invitar dos veces a la misma persona a la misma
+  // solicitud (doble-click, o ya la había invitado invitarJugadoresCercanos)
+  // no es un error, solo no hace nada de nuevo.
+  await db.insert(solicitudInvitaciones).values({ solicitudId, usuarioId: rivalId, distanciaKm: null }).onConflictDoNothing();
+  return { ok: true };
+}
+
 // El equivalente a "avisarle a todos los que estén cerca de la cancha" del
 // pedido original: sin push/geolocalización en vivo (necesitaría que cada
 // celular registre un token — pieza aparte, ver notas de sesión), pero
