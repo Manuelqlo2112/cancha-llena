@@ -86,6 +86,29 @@ describe("reportarResultado", () => {
     expect(segundo).toEqual({ ok: false, error: "ya_reportado" });
   });
 
+  it("dos reportes concurrentes del mismo partido: el ELO se aplica una sola vez", async () => {
+    const { reservaId, organizador } = await partidoJugadoFixture(4);
+    const rival = await crearUsuarioFixture();
+    await agregarParticipante(reservaId, rival.id);
+
+    const asignaciones = [
+      { usuarioId: organizador.id, equipo: "A" as const },
+      { usuarioId: rival.id, equipo: "B" as const },
+    ];
+    const [a, b] = await Promise.all([
+      reportarResultado(organizador.id, reservaId, "A", asignaciones),
+      reportarResultado(rival.id, reservaId, "A", asignaciones),
+    ]);
+
+    const resultados = [a, b];
+    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+    expect(resultados.filter((r) => !r.ok && r.error === "ya_reportado")).toHaveLength(1);
+
+    const ganador = await db.query.usuarios.findFirst({ where: { id: organizador.id } });
+    const nivelGanador = nivelesDeJugador(ganador?.nivelPorDeporte).find((n) => n.deporte === "futbolito")?.nivel;
+    expect(nivelGanador).toBe(1016); // si el delta se aplicara dos veces, sería 1032
+  });
+
   it("rechaza a alguien que no participÃ³ en el partido", async () => {
     const { reservaId } = await partidoJugadoFixture(4);
     const ajeno = await crearUsuarioFixture();

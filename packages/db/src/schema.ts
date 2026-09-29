@@ -252,17 +252,27 @@ export const pagos = pgTable("pagos", {
   creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const solicitudesRival = pgTable("solicitudes_rival", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  reservaId: uuid("reserva_id")
-    .notNull()
-    .references(() => reservas.id, { onDelete: "cascade" }),
-  cuposFaltantes: integer("cupos_faltantes").notNull(),
-  nivelMinimo: numeric("nivel_minimo", { precision: 3, scale: 1 }),
-  nivelMaximo: numeric("nivel_maximo", { precision: 3, scale: 1 }),
-  estado: solicitudEstadoEnum("estado").notNull().default("abierta"),
-  creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
-});
+export const solicitudesRival = pgTable(
+  "solicitudes_rival",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reservaId: uuid("reserva_id")
+      .notNull()
+      .references(() => reservas.id, { onDelete: "cascade" }),
+    cuposFaltantes: integer("cupos_faltantes").notNull(),
+    nivelMinimo: numeric("nivel_minimo", { precision: 3, scale: 1 }),
+    nivelMaximo: numeric("nivel_maximo", { precision: 3, scale: 1 }),
+    estado: solicitudEstadoEnum("estado").notNull().default("abierta"),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Dos participantes tocando "buscar rival" casi al mismo tiempo podían
+    // pasar los dos el chequeo "no hay una solicitud abierta todavía" antes
+    // de que cualquiera insertara — este índice parcial es el candado real
+    // a nivel DB (mismo patrón que reservas_slot_unico).
+    uniqueIndex("solicitudes_rival_reserva_abierta_unico").on(table.reservaId).where(sql`estado = 'abierta'`),
+  ],
+);
 
 // Sesiones de la app móvil: token opaco emitido al loguearse (credenciales o
 // dev-login), guardado en el celular y mandado como "Authorization: Bearer

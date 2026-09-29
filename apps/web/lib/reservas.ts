@@ -223,7 +223,18 @@ export async function crearSolicitudRival(usuarioId: string, reservaId: string):
   const cuposFaltantes = reserva.cancha.capacidadJugadores - reserva.participantes.length;
   if (cuposFaltantes <= 0) return { ok: false, error: "sin_cupos" };
 
-  const [solicitud] = await db.insert(solicitudesRival).values({ reservaId, cuposFaltantes, estado: "abierta" }).returning();
+  let solicitud: typeof solicitudesRival.$inferSelect;
+  try {
+    // El chequeo "ya_existe" de arriba tiene la misma ventana de carrera que
+    // ya vimos en reservas/ligas: dos participantes pidiendo rival casi al
+    // mismo tiempo podían pasar los dos. solicitudes_rival_reserva_abierta_unico
+    // (schema.ts) es el candado real; esto traduce esa violación al mismo
+    // error prolijo en vez de un 500 crudo.
+    [solicitud] = await db.insert(solicitudesRival).values({ reservaId, cuposFaltantes, estado: "abierta" }).returning();
+  } catch (err) {
+    if (esErrorPostgres(err, "23505")) return { ok: false, error: "ya_existe" };
+    throw err;
+  }
   const invitados = reserva.cancha.complejo
     ? await invitarJugadoresCercanos(solicitud!.id, reserva.cancha.complejo, [
         reserva.usuarioId,

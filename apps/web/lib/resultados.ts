@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, participantesReserva, reservas, usuarios } from "@cancha-llena/db";
 import { esUuid } from "@/lib/validacion";
 
@@ -115,10 +115,19 @@ export async function reportarResultado(
   const realA = equipoGanador === "A" ? 1 : equipoGanador === "B" ? 0 : 0.5;
   const deltaA = Math.round(K_FACTOR * (realA - esperadoA));
 
-  // El delta se aplica con aritmética hecha en el UPDATE mismo (no
-  // "leer rating actual en JS, sumar, escribir el total") — igual que el
-  // cupoOcupado de ligas: dos resultados reportados casi al mismo tiempo que
-  // tocan al mismo jugador no se pueden pisar entre sí.
+  // El chequeo de "ya_reportado" de arriba (línea ~88) es lectura-antes-de-
+  // escribir: dos participantes reportando casi al mismo tiempo podían pasar
+  // los dos, y el delta de ELO se aplicaba dos veces. Este UPDATE con guarda
+  // WHERE resultadoReportadoEn IS NULL es el candado real — solo la llamada
+  // que efectivamente "gana" la carrera devuelve una fila, y solo esa
+  // aplica el delta. Mismo patrón atómico que cupoOcupado en ligas/reservas.
+  const [reclamada] = await db
+    .update(reservas)
+    .set({ equipoGanador, resultadoReportadoPorId: usuarioId, resultadoReportadoEn: new Date() })
+    .where(and(eq(reservas.id, reservaId), isNull(reservas.resultadoReportadoEn)))
+    .returning({ id: reservas.id });
+  if (!reclamada) return { ok: false, error: "ya_reportado" };
+
   await aplicarDeltaNivel(equipoA, deporte, deltaA);
   await aplicarDeltaNivel(equipoB, deporte, -deltaA);
 
@@ -128,8 +137,6 @@ export async function reportarResultado(
       .set({ equipo: a.equipo })
       .where(and(eq(participantesReserva.reservaId, reservaId), eq(participantesReserva.usuarioId, a.usuarioId)));
   }
-
-  await db.update(reservas).set({ equipoGanador, resultadoReportadoPorId: usuarioId, resultadoReportadoEn: new Date() }).where(eq(reservas.id, reservaId));
 
   return { ok: true };
 }

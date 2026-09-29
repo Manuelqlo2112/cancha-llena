@@ -32,6 +32,18 @@ describe("crearSolicitudRival", () => {
     expect(segunda).toMatchObject({ ok: false, error: "ya_existe" });
   });
 
+  it("dos pedidos concurrentes para la misma reserva: solo uno crea la solicitud", async () => {
+    const { organizador, reservaId } = await reservarFixture(4);
+    const [a, b] = await Promise.all([crearSolicitudRival(organizador.id, reservaId), crearSolicitudRival(organizador.id, reservaId)]);
+
+    const resultados = [a, b];
+    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+    expect(resultados.filter((r) => !r.ok && r.error === "ya_existe")).toHaveLength(1);
+
+    const abiertas = await db.query.solicitudesRival.findMany({ where: { reservaId, estado: "abierta" } });
+    expect(abiertas).toHaveLength(1);
+  });
+
   it("la rechaza si no quedan cupos (cancha llena)", async () => {
     const { cancha, organizador, reservaId } = await reservarFixture(1); // capacidad 1 = ya está llena con el organizador
     expect(cancha.capacidadJugadores).toBe(1);
