@@ -29,6 +29,12 @@ describe("registrarConCredenciales", () => {
     expect(await registrarConCredenciales("  ", "ana3@mail.cl", "supersecreta")).toEqual({ ok: false, error: "datos_invalidos" });
     expect(await registrarConCredenciales("Ana", "  ", "supersecreta")).toEqual({ ok: false, error: "datos_invalidos" });
   });
+
+  it("rechaza nombre, email o contraseña con largo absurdo", async () => {
+    expect(await registrarConCredenciales("A".repeat(101), "ana4@mail.cl", "supersecreta")).toEqual({ ok: false, error: "datos_invalidos" });
+    expect(await registrarConCredenciales("Ana", `${"a".repeat(250)}@mail.cl`, "supersecreta")).toEqual({ ok: false, error: "datos_invalidos" });
+    expect(await registrarConCredenciales("Ana", "ana5@mail.cl", "a".repeat(201))).toEqual({ ok: false, error: "datos_invalidos" });
+  });
 });
 
 describe("verificarCredenciales", () => {

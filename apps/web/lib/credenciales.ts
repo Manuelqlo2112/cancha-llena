@@ -24,7 +24,12 @@ export type RegistrarConCredencialesResult =
 export async function registrarConCredenciales(nombre: string, email: string, password: string): Promise<RegistrarConCredencialesResult> {
   const nombreLimpio = nombre.trim();
   const emailNorm = email.toLowerCase().trim();
-  if (!nombreLimpio || !emailNorm || password.length < 8) return { ok: false, error: "datos_invalidos" };
+  // Topes generosos pero explícitos — sin esto, un cliente cualquiera podía
+  // mandar un nombre/email/password de cualquier largo (nada los frenaba
+  // antes de llegar al hash de bcrypt o al insert).
+  if (!nombreLimpio || nombreLimpio.length > 100 || !emailNorm || emailNorm.length > 254 || password.length < 8 || password.length > 200) {
+    return { ok: false, error: "datos_invalidos" };
+  }
 
   const yaExiste = await db.query.usuarios.findFirst({ where: { email: emailNorm } });
   if (yaExiste) return { ok: false, error: "email_en_uso" };
