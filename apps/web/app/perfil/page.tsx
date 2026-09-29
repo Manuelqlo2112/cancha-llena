@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { getSessionUser } from "@/lib/session";
 import { obtenerMisRachas } from "@/lib/reservas";
-import { nivelesDeJugador } from "@/lib/resultados";
+import { nivelesDeJugador, obtenerRivales } from "@/lib/resultados";
 import { DEPORTE_LABEL } from "@/lib/format";
 import { cambiarContrasenaAction, cerrarSesionUniversal } from "@/app/auth-actions";
 
@@ -49,6 +49,7 @@ export default async function PerfilPage({
   const mejorRachaGlobal = rachas.reduce((max, r) => Math.max(max, r.mejorRacha), 0);
   const rachasActivas = rachas.filter((r) => r.vigente).length;
   const niveles = nivelesDeJugador(session.nivelPorDeporte);
+  const rivales = await obtenerRivales(session.id);
 
   return (
     <div className="mx-auto max-w-md">
@@ -119,6 +120,25 @@ export default async function PerfilPage({
               </Card>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {rivales.length > 0 ? (
+        <div className="mb-6">
+          <h2 className="mb-2 text-sm font-medium">Tus rivales</h2>
+          <div className="flex flex-col gap-2">
+            {rivales.slice(0, 5).map((r) => (
+              <Card key={r.rivalId} className="flex items-center justify-between py-2.5">
+                <span className="text-sm">{r.rivalNombre}</span>
+                <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+                  {r.victorias}V {r.empates}E {r.derrotas}D
+                </span>
+              </Card>
+            ))}
+          </div>
+          <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+            Historial cabeza a cabeza en partidos con resultado reportado.
+          </p>
         </div>
       ) : null}
 

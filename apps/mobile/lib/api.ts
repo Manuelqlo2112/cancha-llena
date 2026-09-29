@@ -131,6 +131,8 @@ export type ReservaParaReportar = {
 
 export type NivelJugador = { deporte: string; nivel: number };
 
+export type RivalHistorial = { rivalId: string; rivalNombre: string; victorias: number; derrotas: number; empates: number };
+
 export type SolicitudAbierta = {
   id: string;
   cuposFaltantes: number;
@@ -224,7 +226,11 @@ export const api = {
   unirseSolicitud: (solicitudId: string) =>
     request<{ ok: boolean; error?: string }>(`/api/solicitudes/${solicitudId}/unirse`, { method: "POST" }),
   listarSolicitudes: () => request<{ solicitudes: SolicitudAbierta[] }>("/api/solicitudes", { formaFija: true }),
-  misReservas: () => request<{ reservas: MiReserva[]; rachas: MiRacha[]; niveles: NivelJugador[] }>("/api/reservas/mias", { requiereSesion: true, formaFija: true }),
+  misReservas: () =>
+    request<{ reservas: MiReserva[]; rachas: MiRacha[]; niveles: NivelJugador[]; rivales: RivalHistorial[] }>("/api/reservas/mias", {
+      requiereSesion: true,
+      formaFija: true,
+    }),
   cancelarReserva: (reservaId: string) => request<{ ok: boolean; error?: string }>(`/api/reservas/${reservaId}/cancelar`, { method: "POST" }),
   buscarRival: (reservaId: string) =>
     request<{ ok: boolean; solicitudId?: string; invitados?: number; error?: string }>(`/api/reservas/${reservaId}/buscar-rival`, { method: "POST" }),

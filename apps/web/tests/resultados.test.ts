@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, participantesReserva, reservas } from "@cancha-llena/db";
 import { crearReserva } from "@/lib/reservas";
-import { nivelesDeJugador, obtenerReservaParaReportar, reportarResultado } from "@/lib/resultados";
+import { nivelesDeJugador, obtenerReservaParaReportar, obtenerRivales, reportarResultado } from "@/lib/resultados";
 import { crearCanchaFixture, crearComplejoFixture, crearUsuarioFixture, fechaRelativa, resetDb } from "./helpers";
 
 beforeEach(resetDb);
@@ -23,6 +23,37 @@ async function partidoJugadoFixture(capacidad = 4) {
 
 async function agregarParticipante(reservaId: string, usuarioId: string) {
   await db.insert(participantesReserva).values({ reservaId, usuarioId, confirmado: true });
+}
+
+// El organizador (equipo A) contra un rival nuevo (equipo B) — para los
+// tests de obtenerRivales, donde lo que importa es acumular resultados
+// entre las MISMAS dos personas a través de varios partidos.
+async function jugarPartido(capacidad: number, equipoGanador: "A" | "B" | "empate") {
+  const { reservaId, organizador } = await partidoJugadoFixture(capacidad);
+  const rival = await crearUsuarioFixture();
+  await agregarParticipante(reservaId, rival.id);
+  await reportarResultado(organizador.id, reservaId, equipoGanador, [
+    { usuarioId: organizador.id, equipo: "A" },
+    { usuarioId: rival.id, equipo: "B" },
+  ]);
+  return { organizador, rival, reservaId };
+}
+
+async function jugarPartidoConMismoRival(
+  organizador: Awaited<ReturnType<typeof crearUsuarioFixture>>,
+  rival: Awaited<ReturnType<typeof crearUsuarioFixture>>,
+  equipoGanador: "A" | "B" | "empate",
+) {
+  const complejo = await crearComplejoFixture();
+  const cancha = await crearCanchaFixture(complejo.id, { capacidadJugadores: 4 });
+  const r = await crearReserva(organizador.id, cancha.id, fechaRelativa(1), "19:00");
+  if (!r.ok) throw new Error("fixture: no se pudo reservar");
+  await db.update(reservas).set({ fecha: fechaRelativa(-1) }).where(eq(reservas.id, r.reservaId));
+  await agregarParticipante(r.reservaId, rival.id);
+  await reportarResultado(organizador.id, r.reservaId, equipoGanador, [
+    { usuarioId: organizador.id, equipo: "A" },
+    { usuarioId: rival.id, equipo: "B" },
+  ]);
 }
 
 describe("reportarResultado", () => {
@@ -157,6 +188,50 @@ describe("obtenerReservaParaReportar", () => {
     const ajeno = await crearUsuarioFixture();
     const r = await obtenerReservaParaReportar(ajeno.id, reservaId);
     expect(r).toBeNull();
+  });
+});
+
+describe("obtenerRivales", () => {
+  it("acumula victorias, derrotas y empates contra el mismo rival a través de varios partidos", async () => {
+    const { organizador, rival } = await jugarPartido(4, "A"); // organizador gana
+    await jugarPartidoConMismoRival(organizador, rival, "B"); // organizador pierde
+    await jugarPartidoConMismoRival(organizador, rival, "empate");
+
+    const rivales = await obtenerRivales(organizador.id);
+    expect(rivales).toEqual([{ rivalId: rival.id, rivalNombre: rival.nombre, victorias: 1, derrotas: 1, empates: 1 }]);
+
+    const desdeElOtroLado = await obtenerRivales(rival.id);
+    expect(desdeElOtroLado).toEqual([{ rivalId: organizador.id, rivalNombre: organizador.nombre, victorias: 1, derrotas: 1, empates: 1 }]);
+  });
+
+  it("no cuenta un partido que todavía no tiene resultado reportado", async () => {
+    const { reservaId, organizador } = await partidoJugadoFixture(4);
+    const rival = await crearUsuarioFixture();
+    await agregarParticipante(reservaId, rival.id);
+
+    expect(await obtenerRivales(organizador.id)).toEqual([]);
+  });
+
+  it("no cuenta a un compañero del mismo equipo como rival", async () => {
+    const { reservaId, organizador } = await partidoJugadoFixture(4);
+    const companero = await crearUsuarioFixture();
+    const rival = await crearUsuarioFixture();
+    await agregarParticipante(reservaId, companero.id);
+    await agregarParticipante(reservaId, rival.id);
+
+    await reportarResultado(organizador.id, reservaId, "A", [
+      { usuarioId: organizador.id, equipo: "A" },
+      { usuarioId: companero.id, equipo: "A" },
+      { usuarioId: rival.id, equipo: "B" },
+    ]);
+
+    const rivales = await obtenerRivales(organizador.id);
+    expect(rivales.map((r) => r.rivalId)).toEqual([rival.id]);
+  });
+
+  it("devuelve vacío para alguien que nunca jugó", async () => {
+    const jugador = await crearUsuarioFixture();
+    expect(await obtenerRivales(jugador.id)).toEqual([]);
   });
 });
 

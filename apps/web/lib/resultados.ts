@@ -153,6 +153,51 @@ export function nivelesDeJugador(nivelPorDeporte: unknown): NivelJugador[] {
     .map(([deporte, nivel]) => ({ deporte, nivel }));
 }
 
+export type RivalHistorial = {
+  rivalId: string;
+  rivalNombre: string;
+  victorias: number;
+  derrotas: number;
+  empates: number;
+};
+
+// Fase 3 del roadmap (red, Sección 06 del doc de producto): antes de poder
+// "retar a alguien a revancha" hace falta poder mostrar contra quién ya
+// jugó un jugador y cómo le fue — el historial cabeza a cabeza. Se calcula
+// entero a partir de datos que ya existían (reservas con resultado
+// reportado + equipo de cada participante), sin agregar ninguna tabla.
+export async function obtenerRivales(usuarioId: string): Promise<RivalHistorial[]> {
+  const misParticipaciones = await db.query.participantesReserva.findMany({
+    where: { usuarioId },
+    columns: { reservaId: true, equipo: true },
+  });
+  const reservaIds = misParticipaciones.map((p) => p.reservaId);
+  if (reservaIds.length === 0) return [];
+  const miEquipoPorReserva = new Map(misParticipaciones.filter((p) => p.equipo).map((p) => [p.reservaId, p.equipo]));
+
+  const reservasJugadas = await db.query.reservas.findMany({
+    where: { id: { in: reservaIds } },
+    columns: { id: true, equipoGanador: true },
+    with: { participantes: { with: { usuario: { columns: { id: true, nombre: true } } } } },
+  });
+
+  const tally = new Map<string, RivalHistorial>();
+  for (const r of reservasJugadas) {
+    const miEquipo = miEquipoPorReserva.get(r.id);
+    if (!miEquipo || !r.equipoGanador) continue; // sin resultado reportado, o yo no quedé asignado a un equipo
+    for (const p of r.participantes) {
+      if (!p.usuario || p.usuarioId === usuarioId || !p.equipo || p.equipo === miEquipo) continue;
+      const entry = tally.get(p.usuario.id) ?? { rivalId: p.usuario.id, rivalNombre: p.usuario.nombre, victorias: 0, derrotas: 0, empates: 0 };
+      if (r.equipoGanador === "empate") entry.empates += 1;
+      else if (r.equipoGanador === miEquipo) entry.victorias += 1;
+      else entry.derrotas += 1;
+      tally.set(p.usuario.id, entry);
+    }
+  }
+
+  return [...tally.values()].sort((a, b) => b.victorias + b.derrotas + b.empates - (a.victorias + a.derrotas + a.empates));
+}
+
 async function aplicarDeltaNivel(usuarioIds: string[], deporte: string, delta: number): Promise<void> {
   if (usuarioIds.length === 0) return;
   await db

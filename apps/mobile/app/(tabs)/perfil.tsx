@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { api, type MiRacha, type NivelJugador } from "@/lib/api";
+import { api, type MiRacha, type NivelJugador, type RivalHistorial } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
 
@@ -12,6 +12,7 @@ export default function PerfilScreen() {
   const { usuario, cerrarSesion } = useSession();
   const [rachas, setRachas] = useState<MiRacha[] | null>(null);
   const [niveles, setNiveles] = useState<NivelJugador[]>([]);
+  const [rivales, setRivales] = useState<RivalHistorial[]>([]);
   const [errorRachas, setErrorRachas] = useState(false);
 
   const cargarRachas = useCallback(() => {
@@ -24,6 +25,7 @@ export default function PerfilScreen() {
       .then((r) => {
         setRachas(r.rachas);
         setNiveles(r.niveles);
+        setRivales(r.rivales);
       })
       .catch(() => setErrorRachas(true));
   }, [usuario]);
@@ -97,6 +99,21 @@ export default function PerfilScreen() {
               </Text>
             </View>
           ))}
+        </View>
+      ) : null}
+
+      {rivales.length > 0 ? (
+        <View style={{ marginTop: 8 }}>
+          <Text style={styles.sectionTitle}>Tus rivales</Text>
+          {rivales.slice(0, 5).map((r) => (
+            <View key={r.rivalId} style={styles.rachaRow}>
+              <Text style={styles.rachaComplejo}>{r.rivalNombre}</Text>
+              <Text style={styles.rachaValor}>
+                {r.victorias}V {r.empates}E {r.derrotas}D
+              </Text>
+            </View>
+          ))}
+          <Text style={[styles.muted, { marginTop: -2, marginBottom: 8 }]}>Historial cabeza a cabeza en partidos con resultado reportado.</Text>
         </View>
       ) : null}
 
