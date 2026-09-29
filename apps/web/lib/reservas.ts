@@ -2,6 +2,7 @@ import { and, eq, gt, ne, sql } from "drizzle-orm";
 import { db, pagos, participantesReserva, rachas, reservas, solicitudesRival, solicitudInvitaciones, usuarios } from "@cancha-llena/db";
 import { esDiaLaboral, horaFinDe, SLOTS_PRIME, SLOTS_VALLE } from "@cancha-llena/db/slots";
 import { distanciaKm } from "@cancha-llena/db/geo";
+import { esErrorPostgres } from "./dbErrors";
 import { esFechaValida, esUuid } from "./validacion";
 
 // Radio dentro del cual se considera a un jugador "cerca de la cancha" para
@@ -89,7 +90,7 @@ export async function crearReserva(usuarioId: string, canchaId: string, fecha: s
       })
       .returning();
   } catch (err) {
-    if (err && typeof err === "object" && "code" in err && err.code === "23505") {
+    if (esErrorPostgres(err, "23505")) {
       return { ok: false, error: "ocupado" };
     }
     throw err;
@@ -147,7 +148,7 @@ export async function unirseSolicitud(usuarioId: string, solicitudId: string): P
     // participantes_reserva_unico (schema.ts): backstop contra un doble-click
     // que dispare esta misma request dos veces — el cupo ya se descontó
     // arriba, así que hay que devolverlo antes de reportar el error.
-    if (err && typeof err === "object" && "code" in err && err.code === "23505") {
+    if (esErrorPostgres(err, "23505")) {
       await db
         .update(solicitudesRival)
         .set({ cuposFaltantes: sql`${solicitudesRival.cuposFaltantes} + 1`, estado: "abierta" })

@@ -187,6 +187,14 @@ describe("crearComplejo", () => {
     expect(await crearComplejo(superAdmin, { ...datosValidos, nombre: "  " })).toEqual({ ok: false, error: "datos_invalidos" });
     expect(await crearComplejo(superAdmin, { ...datosValidos, direccion: "" })).toEqual({ ok: false, error: "datos_invalidos" });
   });
+
+  it("dos altas concurrentes con el mismo nombre no chocan: cada una termina con un slug propio", async () => {
+    const superAdmin = await crearUsuarioFixture({ rol: "super_admin" });
+    const [a, b] = await Promise.all([crearComplejo(superAdmin, datosValidos), crearComplejo(superAdmin, datosValidos)]);
+    expect(a.ok).toBe(true);
+    expect(b.ok).toBe(true);
+    if (a.ok && b.ok) expect(a.slug).not.toBe(b.slug);
+  });
 });
 
 describe("crearCancha", () => {

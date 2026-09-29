@@ -35,6 +35,26 @@ describe("crearReserva", () => {
     expect(segundo).toEqual({ ok: false, error: "ocupado" });
   });
 
+  it("dos reservas concurrentes para el mismo horario: solo una gana, la otra recibe 'ocupado' (no un error crudo)", async () => {
+    const complejo = await crearComplejoFixture();
+    const cancha = await crearCanchaFixture(complejo.id);
+    const j1 = await crearUsuarioFixture();
+    const j2 = await crearUsuarioFixture();
+    const fecha = fechaRelativa(1);
+
+    // Promise.all (no await secuencial) para que ambas lleguen al INSERT sin
+    // que el chequeo "yaExiste" de la primera ya haya visto a la segunda —
+    // esto es lo que realmente ejercita el catch de la constraint unique.
+    const [a, b] = await Promise.all([
+      crearReserva(j1.id, cancha.id, fecha, "19:00"),
+      crearReserva(j2.id, cancha.id, fecha, "19:00"),
+    ]);
+
+    const resultados = [a, b];
+    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+    expect(resultados.filter((r) => !r.ok && r.error === "ocupado")).toHaveLength(1);
+  });
+
   it("rechaza una cancha inexistente", async () => {
     const jugador = await crearUsuarioFixture();
     const r = await crearReserva(jugador.id, "00000000-0000-0000-0000-000000000000", fechaRelativa(1), "19:00");

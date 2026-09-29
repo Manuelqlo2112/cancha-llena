@@ -20,6 +20,17 @@ describe("registrarConCredenciales", () => {
     expect(segundo).toEqual({ ok: false, error: "email_en_uso" });
   });
 
+  it("dos registros concurrentes con el mismo email: solo uno gana, el otro recibe 'email_en_uso' (no un error crudo)", async () => {
+    const [a, b] = await Promise.all([
+      registrarConCredenciales("Ana Test", "carrera@mail.cl", "supersecreta"),
+      registrarConCredenciales("Otra Ana", "carrera@mail.cl", "otraClave123"),
+    ]);
+
+    const resultados = [a, b];
+    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+    expect(resultados.filter((r) => !r.ok && r.error === "email_en_uso")).toHaveLength(1);
+  });
+
   it("rechaza contraseñas menores a 8 caracteres", async () => {
     const r = await registrarConCredenciales("Ana Test", "ana2@mail.cl", "corta");
     expect(r).toEqual({ ok: false, error: "datos_invalidos" });

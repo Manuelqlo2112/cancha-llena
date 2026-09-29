@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { canchas, complejos, db } from "@cancha-llena/db";
+import { esErrorPostgres } from "@/lib/dbErrors";
 import { puedeAdministrar } from "@/lib/permisos";
 import type { getSessionUser } from "@/lib/session";
 
@@ -71,7 +72,9 @@ export async function crearComplejo(
   if (!slugBase) return { ok: false, error: "datos_invalidos" };
 
   // Si el slug ya existe (dos complejos con nombre parecido), se le suma un
-  // sufijo numérico en vez de chocar con el unique constraint sin más.
+  // sufijo numérico en vez de chocar con el unique constraint sin más. El
+  // chequeo previo no es atómico contra otra alta concurrente con el mismo
+  // nombre, así que el insert también reintenta si igual choca (23505).
   let slug = slugBase;
   let intento = 1;
   while (await db.query.complejos.findFirst({ where: { slug } })) {
@@ -79,21 +82,31 @@ export async function crearComplejo(
     slug = `${slugBase}-${intento}`;
   }
 
-  await db.insert(complejos).values({
-    nombre: nombreLimpio,
-    slug,
-    comuna: comunaLimpia,
-    direccion: direccionLimpia,
-    telefono: datos.telefono?.trim() || null,
-    email: datos.email?.trim() || null,
-    horarioTexto: datos.horarioTexto?.trim() || null,
-    comisionBasePct: String(datos.comisionBasePct),
-    comisionVallePct: String(datos.comisionVallePct),
-    requiereAbono: datos.requiereAbono,
-    porcentajeAbono: String(datos.requiereAbono ? datos.porcentajeAbono : 0),
-  });
-
-  return { ok: true, slug };
+  for (;;) {
+    try {
+      await db.insert(complejos).values({
+        nombre: nombreLimpio,
+        slug,
+        comuna: comunaLimpia,
+        direccion: direccionLimpia,
+        telefono: datos.telefono?.trim() || null,
+        email: datos.email?.trim() || null,
+        horarioTexto: datos.horarioTexto?.trim() || null,
+        comisionBasePct: String(datos.comisionBasePct),
+        comisionVallePct: String(datos.comisionVallePct),
+        requiereAbono: datos.requiereAbono,
+        porcentajeAbono: String(datos.requiereAbono ? datos.porcentajeAbono : 0),
+      });
+      return { ok: true, slug };
+    } catch (err) {
+      if (esErrorPostgres(err, "23505")) {
+        intento += 1;
+        slug = `${slugBase}-${intento}`;
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 export async function actualizarComplejo(

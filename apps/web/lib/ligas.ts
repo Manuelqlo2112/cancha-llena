@@ -2,6 +2,7 @@ import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { db, ligaInscripciones, ligas, participantesReserva, reservas } from "@cancha-llena/db";
 import { horaFinDe, SLOTS_VALLE } from "@cancha-llena/db/slots";
 import { puedeAdministrar } from "@/lib/permisos";
+import { esErrorPostgres } from "@/lib/dbErrors";
 import { actualizarRacha } from "@/lib/reservas";
 import { esUuid } from "@/lib/validacion";
 import type { getSessionUser } from "@/lib/session";
@@ -215,7 +216,7 @@ async function asegurarProximaSesion(ligaId: string): Promise<void> {
   } catch (err) {
     // reservas_slot_unico (schema.ts): alguien más materializó/reservó este
     // mismo slot justo antes — no hay nada más que hacer esta semana.
-    if (err && typeof err === "object" && "code" in err && err.code === "23505") return;
+    if (esErrorPostgres(err, "23505")) return;
     throw err;
   }
 

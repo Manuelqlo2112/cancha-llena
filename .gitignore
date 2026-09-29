@@ -11,3 +11,4 @@ packages/db/pgdata
 apps/mobile/.expo
 .vercel
 apps/web/.vercel
+*.tsbuildinfo

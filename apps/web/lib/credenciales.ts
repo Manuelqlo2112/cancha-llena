@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, usuarios } from "@cancha-llena/db";
+import { esErrorPostgres } from "./dbErrors";
 
 // Lógica de email+contraseña compartida entre el Credentials provider de
 // Auth.js (auth.ts, para la web) y la API que usa el móvil (que no puede
@@ -44,7 +45,7 @@ export async function registrarConCredenciales(nombre: string, email: string, pa
     // chequeo de arriba (race check-then-insert) — el segundo insert choca
     // con la constraint unique de la columna. Se traduce a la misma
     // respuesta prolija en vez de dejar pasar el error crudo de Postgres.
-    if (err && typeof err === "object" && "code" in err && err.code === "23505") {
+    if (esErrorPostgres(err, "23505")) {
       return { ok: false, error: "email_en_uso" };
     }
     throw err;
