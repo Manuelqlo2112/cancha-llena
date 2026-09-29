@@ -20,6 +20,7 @@ const MENSAJES: Record<string, string> = {
   error_ya_paso: "Ese partido ya pasó.",
   error_sin_permiso: "No podés hacer eso en esa reserva.",
   error_no_encontrada: "No encontramos esa reserva.",
+  error_datos_invalidos: "Esos datos no son válidos — probá de nuevo.",
 };
 
 export default async function ComplejoPage({

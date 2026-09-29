@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@cancha-llena/db";
 import { devLoginHabilitado } from "@/lib/devAuth";
 import { crearSesionMovil } from "@/lib/sesionesMovil";
+import { esUuid } from "@/lib/validacion";
 
 // Login de desarrollo para la app móvil (mismo criterio que /login/dev en la
 // web: sin password, solo confirma que el id pertenece a un usuario
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const usuarioId = body?.usuarioId as string | undefined;
-  if (!usuarioId) return NextResponse.json({ ok: false, error: "usuarioId requerido" }, { status: 400 });
+  if (!usuarioId || !esUuid(usuarioId)) return NextResponse.json({ ok: false, error: "usuarioId requerido" }, { status: 400 });
 
   const usuario = await db.query.usuarios.findFirst({ where: { id: usuarioId } });
   if (!usuario) return NextResponse.json({ ok: false, error: "usuario no existe" }, { status: 404 });

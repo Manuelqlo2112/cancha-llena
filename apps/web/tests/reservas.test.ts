@@ -50,6 +50,18 @@ describe("crearReserva", () => {
     expect(r).toEqual({ ok: false, error: "fecha_pasada" });
   });
 
+  it("rechaza canchaId, fecha u hora con formato inválido antes de tocar la base", async () => {
+    const complejo = await crearComplejoFixture();
+    const cancha = await crearCanchaFixture(complejo.id);
+    const jugador = await crearUsuarioFixture();
+    const fechaOk = fechaRelativa(1);
+
+    await expect(crearReserva(jugador.id, "no-es-un-uuid", fechaOk, "19:00")).resolves.toEqual({ ok: false, error: "datos_invalidos" });
+    await expect(crearReserva(jugador.id, cancha.id, "no-es-una-fecha", "19:00")).resolves.toEqual({ ok: false, error: "datos_invalidos" });
+    await expect(crearReserva(jugador.id, cancha.id, "2026-13-45", "19:00")).resolves.toEqual({ ok: false, error: "datos_invalidos" });
+    await expect(crearReserva(jugador.id, cancha.id, fechaOk, "19:30")).resolves.toEqual({ ok: false, error: "datos_invalidos" });
+  });
+
   it("genera un pago pendiente-a-pagado cuando el complejo exige abono", async () => {
     const complejo = await crearComplejoFixture({ requiereAbono: true, porcentajeAbono: "50.00" });
     const cancha = await crearCanchaFixture(complejo.id, { precioBase: "40000" });

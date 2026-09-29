@@ -1,7 +1,8 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, gt, ne, sql } from "drizzle-orm";
 import { db, pagos, participantesReserva, rachas, reservas, solicitudesRival, solicitudInvitaciones, usuarios } from "@cancha-llena/db";
-import { esDiaLaboral, horaFinDe, SLOTS_VALLE } from "@cancha-llena/db/slots";
+import { esDiaLaboral, horaFinDe, SLOTS_PRIME, SLOTS_VALLE } from "@cancha-llena/db/slots";
 import { distanciaKm } from "@cancha-llena/db/geo";
+import { esFechaValida, esUuid } from "./validacion";
 
 // Radio dentro del cual se considera a un jugador "cerca de la cancha" para
 // avisarle que un partido busca gente — mismo valor que usa el seed.
@@ -14,9 +15,17 @@ const RADIO_INVITACION_KM = 8;
 
 export type CrearReservaResult =
   | { ok: true; reservaId: string }
-  | { ok: false; error: "cancha_no_existe" | "ocupado" | "fecha_pasada" };
+  | { ok: false; error: "cancha_no_existe" | "ocupado" | "fecha_pasada" | "datos_invalidos" };
 
 export async function crearReserva(usuarioId: string, canchaId: string, fecha: string, hora: string): Promise<CrearReservaResult> {
+  // La UI solo manda ids/horarios que ella misma generó, pero esto también lo
+  // llama la API que consume el móvil — un cliente cualquiera puede mandar
+  // cualquier string. Sin este chequeo, un canchaId o fecha con formato
+  // inválido llegaba tal cual a Postgres y tiraba un error crudo de sintaxis
+  // en vez de una respuesta prolija.
+  const horaValida = (SLOTS_VALLE as readonly string[]).includes(hora) || (SLOTS_PRIME as readonly string[]).includes(hora);
+  if (!esUuid(canchaId) || !esFechaValida(fecha) || !horaValida) return { ok: false, error: "datos_invalidos" };
+
   const cancha = await db.query.canchas.findFirst({ where: { id: canchaId }, with: { complejo: true } });
   if (!cancha || !cancha.complejo) return { ok: false, error: "cancha_no_existe" };
   const complejo = cancha.complejo;
@@ -40,20 +49,33 @@ export async function crearReserva(usuarioId: string, canchaId: string, fecha: s
     ? Math.round((montoTotal * (Number(complejo.porcentajeAbono) / 100)) / 1000) * 1000
     : 0;
 
-  const [reserva] = await db
-    .insert(reservas)
-    .values({
-      canchaId,
-      usuarioId,
-      fecha,
-      horaInicio: hora,
-      horaFin: horaFinDe(hora),
-      estado: "confirmada",
-      esHorarioValle,
-      montoTotal: String(montoTotal),
-      montoAbono: String(montoAbono),
-    })
-    .returning();
+  let reserva: typeof reservas.$inferSelect | undefined;
+  try {
+    // El chequeo "yaExiste" de arriba tiene una ventana de carrera entre el
+    // SELECT y este INSERT — dos reservas concurrentes para el mismo horario
+    // podían pasar ambas el chequeo. reservas_slot_unico (schema.ts) es el
+    // backstop real a nivel DB; acá se traduce esa violación al mismo error
+    // "ocupado" que ya maneja el resto del flujo.
+    [reserva] = await db
+      .insert(reservas)
+      .values({
+        canchaId,
+        usuarioId,
+        fecha,
+        horaInicio: hora,
+        horaFin: horaFinDe(hora),
+        estado: "confirmada",
+        esHorarioValle,
+        montoTotal: String(montoTotal),
+        montoAbono: String(montoAbono),
+      })
+      .returning();
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && err.code === "23505") {
+      return { ok: false, error: "ocupado" };
+    }
+    throw err;
+  }
 
   if (montoAbono > 0) {
     // No hay pasarela real todavía (Sección 3 del doc técnico): se simula el
@@ -77,6 +99,7 @@ export async function crearReserva(usuarioId: string, canchaId: string, fecha: s
 export type UnirseResult = { ok: true } | { ok: false; error: "solicitud_cerrada" | "ya_unido" };
 
 export async function unirseSolicitud(usuarioId: string, solicitudId: string): Promise<UnirseResult> {
+  if (!esUuid(solicitudId)) return { ok: false, error: "solicitud_cerrada" };
   const solicitud = await db.query.solicitudesRival.findFirst({ where: { id: solicitudId }, with: { reserva: true } });
   if (!solicitud || solicitud.estado !== "abierta" || !solicitud.reserva) return { ok: false, error: "solicitud_cerrada" };
 
@@ -85,13 +108,36 @@ export async function unirseSolicitud(usuarioId: string, solicitudId: string): P
   });
   if (yaEsParticipante) return { ok: false, error: "ya_unido" };
 
-  await db.insert(participantesReserva).values({ reservaId: solicitud.reserva.id, usuarioId, confirmado: true, viaSolicitudRival: true });
-
-  const cuposRestantes = solicitud.cuposFaltantes - 1;
-  await db
+  // Decremento atómico y condicional: la lectura de solicitud.cuposFaltantes
+  // de arriba puede estar desactualizada si dos jugadores se suman al mismo
+  // tiempo con un solo cupo libre. El WHERE (más el row lock que Postgres
+  // toma durante el UPDATE) asegura que solo uno de los dos gane la carrera
+  // en vez de que cuposFaltantes termine en negativo.
+  const [actualizada] = await db
     .update(solicitudesRival)
-    .set({ cuposFaltantes: cuposRestantes, estado: cuposRestantes <= 0 ? "cerrada" : "abierta" })
-    .where(eq(solicitudesRival.id, solicitudId));
+    .set({ cuposFaltantes: sql`${solicitudesRival.cuposFaltantes} - 1` })
+    .where(and(eq(solicitudesRival.id, solicitudId), eq(solicitudesRival.estado, "abierta"), gt(solicitudesRival.cuposFaltantes, 0)))
+    .returning();
+  if (!actualizada) return { ok: false, error: "solicitud_cerrada" };
+  if (actualizada.cuposFaltantes <= 0) {
+    await db.update(solicitudesRival).set({ estado: "cerrada" }).where(eq(solicitudesRival.id, solicitudId));
+  }
+
+  try {
+    await db.insert(participantesReserva).values({ reservaId: solicitud.reserva.id, usuarioId, confirmado: true, viaSolicitudRival: true });
+  } catch (err) {
+    // participantes_reserva_unico (schema.ts): backstop contra un doble-click
+    // que dispare esta misma request dos veces — el cupo ya se descontó
+    // arriba, así que hay que devolverlo antes de reportar el error.
+    if (err && typeof err === "object" && "code" in err && err.code === "23505") {
+      await db
+        .update(solicitudesRival)
+        .set({ cuposFaltantes: sql`${solicitudesRival.cuposFaltantes} + 1`, estado: "abierta" })
+        .where(eq(solicitudesRival.id, solicitudId));
+      return { ok: false, error: "ya_unido" };
+    }
+    throw err;
+  }
 
   const canchaDeLaSolicitud = await db.query.canchas.findFirst({ where: { id: solicitud.reserva.canchaId } });
   await actualizarRacha(usuarioId, canchaDeLaSolicitud?.complejoId ?? null, solicitud.reserva.fecha);
@@ -108,6 +154,7 @@ export type CancelarResult =
 // día, no después. Un abono pagado se marca reembolsado; una solicitud de
 // rival abierta se cierra sola, ya no hay partido al que sumarse.
 export async function cancelarReserva(usuarioId: string, reservaId: string): Promise<CancelarResult> {
+  if (!esUuid(reservaId)) return { ok: false, error: "no_encontrada" };
   const reserva = await db.query.reservas.findFirst({ where: { id: reservaId }, with: { pagos: true, solicitudRival: true } });
   if (!reserva) return { ok: false, error: "no_encontrada" };
   if (reserva.usuarioId !== usuarioId) return { ok: false, error: "sin_permiso" };
@@ -138,6 +185,7 @@ export type CrearSolicitudResult =
 // El organizador o cualquier participante ya confirmado puede avisar que
 // faltan jugadores — hoy solo lo creaba el seed; esto le da un botón real.
 export async function crearSolicitudRival(usuarioId: string, reservaId: string): Promise<CrearSolicitudResult> {
+  if (!esUuid(reservaId)) return { ok: false, error: "no_encontrada" };
   const reserva = await db.query.reservas.findFirst({
     where: { id: reservaId },
     with: { cancha: { with: { complejo: true } }, participantes: true, solicitudRival: true },
@@ -445,6 +493,7 @@ export type ResponderInvitacionResult =
   | { ok: false; error: "no_encontrada" | "sin_permiso" | "ya_respondida" | "solicitud_cerrada" };
 
 export async function responderInvitacion(usuarioId: string, invitacionId: string, respuesta: "aceptada" | "rechazada"): Promise<ResponderInvitacionResult> {
+  if (!esUuid(invitacionId)) return { ok: false, error: "no_encontrada" };
   const invitacion = await db.query.solicitudInvitaciones.findFirst({
     where: { id: invitacionId },
     with: { solicitud: { with: { reserva: true } } },

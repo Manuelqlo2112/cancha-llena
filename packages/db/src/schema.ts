@@ -11,6 +11,7 @@ import {
   text,
   time,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -162,39 +163,60 @@ export const horariosValle = pgTable("horarios_valle", {
   horaFin: time("hora_fin").notNull(),
 });
 
-export const reservas = pgTable("reservas", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  canchaId: uuid("cancha_id")
-    .notNull()
-    .references(() => canchas.id, { onDelete: "cascade" }),
-  usuarioId: uuid("usuario_id")
-    .notNull()
-    .references(() => usuarios.id),
-  fecha: date("fecha").notNull(),
-  horaInicio: time("hora_inicio").notNull(),
-  horaFin: time("hora_fin").notNull(),
-  estado: reservaEstadoEnum("estado").notNull().default("pendiente"),
-  esHorarioValle: boolean("es_horario_valle").notNull().default(false),
-  montoTotal: numeric("monto_total", { precision: 10, scale: 0 }).notNull(),
-  // 0 cuando el complejo no exige abono (requiereAbono = false)
-  montoAbono: numeric("monto_abono", { precision: 10, scale: 0 }).notNull().default("0"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const reservas = pgTable(
+  "reservas",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    canchaId: uuid("cancha_id")
+      .notNull()
+      .references(() => canchas.id, { onDelete: "cascade" }),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => usuarios.id),
+    fecha: date("fecha").notNull(),
+    horaInicio: time("hora_inicio").notNull(),
+    horaFin: time("hora_fin").notNull(),
+    estado: reservaEstadoEnum("estado").notNull().default("pendiente"),
+    esHorarioValle: boolean("es_horario_valle").notNull().default(false),
+    montoTotal: numeric("monto_total", { precision: 10, scale: 0 }).notNull(),
+    // 0 cuando el complejo no exige abono (requiereAbono = false)
+    montoAbono: numeric("monto_abono", { precision: 10, scale: 0 }).notNull().default("0"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Backstop a nivel DB contra el double-booking: el check "yaExiste" en
+    // crearReserva (lib/reservas.ts) tiene una ventana de carrera entre el
+    // SELECT y el INSERT — dos reservas concurrentes para el mismo horario
+    // podían pasar ambas el chequeo. Parcial (excluye canceladas) porque
+    // cancelar y volver a reservar el mismo horario es un flujo válido.
+    uniqueIndex("reservas_slot_unico").on(table.canchaId, table.fecha, table.horaInicio).where(sql`estado <> 'cancelada'`),
+  ],
+);
 
-export const participantesReserva = pgTable("participantes_reserva", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  reservaId: uuid("reserva_id")
-    .notNull()
-    .references(() => reservas.id, { onDelete: "cascade" }),
-  usuarioId: uuid("usuario_id").references(() => usuarios.id),
-  nombreInvitado: text("nombre_invitado"),
-  confirmado: boolean("confirmado").notNull().default(false),
-  // true si este cupo se llenó por la mecánica de "buscar rival" (se unió a
-  // una solicitud abierta) en vez de haber sido agregado por el organizador.
-  // Es el dato que sostiene el argumento comercial de la Sección 04 del doc
-  // de producto: "cuántas reservas vinieron de una mecánica específica".
-  viaSolicitudRival: boolean("via_solicitud_rival").notNull().default(false),
-});
+export const participantesReserva = pgTable(
+  "participantes_reserva",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reservaId: uuid("reserva_id")
+      .notNull()
+      .references(() => reservas.id, { onDelete: "cascade" }),
+    usuarioId: uuid("usuario_id").references(() => usuarios.id),
+    nombreInvitado: text("nombre_invitado"),
+    confirmado: boolean("confirmado").notNull().default(false),
+    // true si este cupo se llenó por la mecánica de "buscar rival" (se unió a
+    // una solicitud abierta) en vez de haber sido agregado por el organizador.
+    // Es el dato que sostiene el argumento comercial de la Sección 04 del doc
+    // de producto: "cuántas reservas vinieron de una mecánica específica".
+    viaSolicitudRival: boolean("via_solicitud_rival").notNull().default(false),
+  },
+  (table) => [
+    // Un mismo usuario no puede figurar dos veces en la misma reserva (p.ej.
+    // un doble-click en "unirme" disparando la request dos veces). No aplica
+    // a invitados sin cuenta (usuarioId null): Postgres no considera NULL
+    // igual a NULL, así que varios invitados sin usuarioId siguen permitidos.
+    uniqueIndex("participantes_reserva_unico").on(table.reservaId, table.usuarioId),
+  ],
+);
 
 export const pagos = pgTable("pagos", {
   id: uuid("id").primaryKey().defaultRandom(),

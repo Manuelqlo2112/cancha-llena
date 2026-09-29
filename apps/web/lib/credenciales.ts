@@ -30,6 +30,17 @@ export async function registrarConCredenciales(nombre: string, email: string, pa
   if (yaExiste) return { ok: false, error: "email_en_uso" };
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const [nuevo] = await db.insert(usuarios).values({ nombre: nombreLimpio, email: emailNorm, rol: "jugador", passwordHash }).returning();
-  return { ok: true, usuario: nuevo! };
+  try {
+    const [nuevo] = await db.insert(usuarios).values({ nombre: nombreLimpio, email: emailNorm, rol: "jugador", passwordHash }).returning();
+    return { ok: true, usuario: nuevo! };
+  } catch (err) {
+    // Dos registros concurrentes con el mismo email pueden pasar ambos el
+    // chequeo de arriba (race check-then-insert) — el segundo insert choca
+    // con la constraint unique de la columna. Se traduce a la misma
+    // respuesta prolija en vez de dejar pasar el error crudo de Postgres.
+    if (err && typeof err === "object" && "code" in err && err.code === "23505") {
+      return { ok: false, error: "email_en_uso" };
+    }
+    throw err;
+  }
 }
