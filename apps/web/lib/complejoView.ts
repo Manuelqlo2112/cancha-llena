@@ -31,6 +31,9 @@ export async function getComplejoView(slug: string, usuarioId: string | null) {
     with: {
       canchas: {
         where: { activo: true },
+        // Mismo motivo que en la página web equivalente: sin orderBy
+        // explícito Postgres no garantiza el orden entre requests.
+        orderBy: { nombre: "asc" },
         with: {
           reservas: {
             where: { fecha: { gte: hoyISO, lte: finISO }, estado: { ne: "cancelada" } },

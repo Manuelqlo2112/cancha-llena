@@ -52,6 +52,10 @@ export default async function ComplejoPage({
     with: {
       canchas: {
         where: { activo: true },
+        // Sin esto Postgres no garantiza ningún orden — la lista de canchas
+        // podía reordenarse entre recargas, confuso para volver a encontrar
+        // "tu" cancha habitual.
+        orderBy: { nombre: "asc" },
         with: {
           reservas: {
             where: { fecha: { gte: hoyISO, lte: finISO }, estado: { ne: "cancelada" } },

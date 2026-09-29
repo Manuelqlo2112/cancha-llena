@@ -39,6 +39,10 @@ export default async function AdminComplejoPage({
     where: { slug },
     with: {
       canchas: {
+        // Sin esto Postgres no garantiza ningún orden — se vio en vivo: la
+        // lista de canchas cambiaba de orden después de guardar un cambio en
+        // cualquiera de ellas, confuso para el admin a mitad de editar varias.
+        orderBy: { nombre: "asc" },
         with: {
           reservas: {
             columns: { id: true, fecha: true, estado: true, esHorarioValle: true },
