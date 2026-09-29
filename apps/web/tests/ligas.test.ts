@@ -108,6 +108,33 @@ describe("inscribirseALiga / salirDeLiga", () => {
     const r = await salirDeLiga(jugador.id, ligaId);
     expect(r).toEqual({ ok: false, error: "no_inscrito" });
   });
+
+  it("dos inscripciones concurrentes del MISMO usuario (doble-tap) no duplican el cupo", async () => {
+    const { ligaId } = await ligaFixture(4);
+    const jugador = await crearUsuarioFixture();
+
+    const [r1, r2] = await Promise.all([inscribirseALiga(jugador.id, ligaId), inscribirseALiga(jugador.id, ligaId)]);
+    const resultados = [r1, r2].sort((a, b) => Number(b.ok) - Number(a.ok)); // ok:true primero
+    expect(resultados[0]).toEqual({ ok: true });
+    expect(resultados[1]).toEqual({ ok: false, error: "ya_inscrito" });
+
+    const liga = await db.query.ligas.findFirst({ where: { id: ligaId } });
+    expect(liga?.cupoOcupado).toBe(1); // no 2
+  });
+
+  it("dos salidas concurrentes del MISMO usuario no descuentan el cupo dos veces", async () => {
+    const { ligaId } = await ligaFixture(4);
+    const jugador = await crearUsuarioFixture();
+    await inscribirseALiga(jugador.id, ligaId);
+
+    const [r1, r2] = await Promise.all([salirDeLiga(jugador.id, ligaId), salirDeLiga(jugador.id, ligaId)]);
+    const resultados = [r1, r2].sort((a, b) => Number(b.ok) - Number(a.ok));
+    expect(resultados[0]).toEqual({ ok: true });
+    expect(resultados[1]).toEqual({ ok: false, error: "no_inscrito" });
+
+    const liga = await db.query.ligas.findFirst({ where: { id: ligaId } });
+    expect(liga?.cupoOcupado).toBe(0); // no -1
+  });
 });
 
 describe("listarLigasDeComplejo", () => {

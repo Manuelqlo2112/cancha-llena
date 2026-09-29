@@ -3,6 +3,7 @@ import { db, ligaInscripciones, ligas, participantesReserva, reservas } from "@c
 import { horaFinDe, SLOTS_VALLE } from "@cancha-llena/db/slots";
 import { puedeAdministrar } from "@/lib/permisos";
 import { actualizarRacha } from "@/lib/reservas";
+import { esUuid } from "@/lib/validacion";
 import type { getSessionUser } from "@/lib/session";
 
 // Fase 2 del roadmap (retención): a diferencia de "buscar rival" (puntual),
@@ -45,6 +46,7 @@ export async function crearLiga(
     return { ok: false, error: "datos_invalidos" };
   }
 
+  if (!esUuid(datos.canchaId)) return { ok: false, error: "cancha_no_existe" };
   const cancha = await db.query.canchas.findFirst({ where: { id: datos.canchaId, complejoId } });
   if (!cancha) return { ok: false, error: "cancha_no_existe" };
   if (datos.cupoMaximo > cancha.capacidadJugadores) return { ok: false, error: "datos_invalidos" };
@@ -105,13 +107,30 @@ export async function listarLigasDeComplejo(complejoId: string, usuarioId: strin
 export type InscribirseLigaResult = { ok: true } | { ok: false; error: "no_encontrada" | "pausada" | "sin_cupo" | "ya_inscrito" };
 
 export async function inscribirseALiga(usuarioId: string, ligaId: string): Promise<InscribirseLigaResult> {
-  const existente = await db.query.ligaInscripciones.findFirst({ where: { ligaId, usuarioId } });
-  if (existente?.activo) return { ok: false, error: "ya_inscrito" };
+  if (!esUuid(ligaId)) return { ok: false, error: "no_encontrada" };
 
-  // Decremento/incremento atómico y condicionado — mismo patrón que
-  // unirseSolicitud (lib/reservas.ts): dos jugadores anotándose al mismo
-  // tiempo con un solo cupo libre no pueden dejar cupoOcupado por encima de
-  // cupoMaximo.
+  // Se reclama la fila de inscripción PRIMERO, de forma atómica: el
+  // setWhere hace que el UPDATE del ON CONFLICT solo "pegue" (y devuelva
+  // fila) si la inscripción estaba inactiva — dos requests idénticas del
+  // MISMO usuario en paralelo (doble-tap, reintento de red) ya no podían
+  // distinguirse con un SELECT-antes-de-escribir: las dos pasaban el
+  // chequeo de "ya_inscrito" y las dos incrementaban cupoOcupado, aunque
+  // solo quedara una fila activa. Con esto, como mucho una de las dos
+  // transiciona de verdad — la otra ve `activada` vacío.
+  const [activada] = await db
+    .insert(ligaInscripciones)
+    .values({ ligaId, usuarioId, activo: true })
+    .onConflictDoUpdate({
+      target: [ligaInscripciones.ligaId, ligaInscripciones.usuarioId],
+      set: { activo: true, inscritoEn: new Date() },
+      setWhere: eq(ligaInscripciones.activo, false),
+    })
+    .returning();
+
+  if (!activada) return { ok: false, error: "ya_inscrito" };
+
+  // Recién ahora se toca cupoOcupado — una sola vez, garantizado, porque la
+  // transición de arriba ya es exactly-once.
   const [actualizada] = await db
     .update(ligas)
     .set({ cupoOcupado: sql`${ligas.cupoOcupado} + 1` })
@@ -119,19 +138,13 @@ export async function inscribirseALiga(usuarioId: string, ligaId: string): Promi
     .returning();
 
   if (!actualizada) {
+    // Sin cupo, pausada, o no existe — se revierte la reclamación de arriba.
+    await db.update(ligaInscripciones).set({ activo: false }).where(and(eq(ligaInscripciones.ligaId, ligaId), eq(ligaInscripciones.usuarioId, usuarioId)));
     const liga = await db.query.ligas.findFirst({ where: { id: ligaId } });
     if (!liga) return { ok: false, error: "no_encontrada" };
     if (liga.estado !== "activa") return { ok: false, error: "pausada" };
     return { ok: false, error: "sin_cupo" };
   }
-
-  await db
-    .insert(ligaInscripciones)
-    .values({ ligaId, usuarioId, activo: true })
-    .onConflictDoUpdate({
-      target: [ligaInscripciones.ligaId, ligaInscripciones.usuarioId],
-      set: { activo: true, inscritoEn: new Date() },
-    });
 
   return { ok: true };
 }
@@ -139,10 +152,20 @@ export async function inscribirseALiga(usuarioId: string, ligaId: string): Promi
 export type SalirLigaResult = { ok: true } | { ok: false; error: "no_inscrito" };
 
 export async function salirDeLiga(usuarioId: string, ligaId: string): Promise<SalirLigaResult> {
-  const existente = await db.query.ligaInscripciones.findFirst({ where: { ligaId, usuarioId, activo: true } });
-  if (!existente) return { ok: false, error: "no_inscrito" };
+  if (!esUuid(ligaId)) return { ok: false, error: "no_inscrito" };
 
-  await db.update(ligaInscripciones).set({ activo: false }).where(eq(ligaInscripciones.id, existente.id));
+  // Mismo motivo que arriba: el UPDATE condicionado a activo=true (con
+  // .returning() para saber si de verdad pegó) es lo que evita que dos
+  // "Salir" concurrentes del mismo usuario decrementen cupoOcupado dos
+  // veces por una sola salida real.
+  const [desactivada] = await db
+    .update(ligaInscripciones)
+    .set({ activo: false })
+    .where(and(eq(ligaInscripciones.ligaId, ligaId), eq(ligaInscripciones.usuarioId, usuarioId), eq(ligaInscripciones.activo, true)))
+    .returning();
+
+  if (!desactivada) return { ok: false, error: "no_inscrito" };
+
   await db
     .update(ligas)
     .set({ cupoOcupado: sql`${ligas.cupoOcupado} - 1` })
