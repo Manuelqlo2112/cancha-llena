@@ -39,7 +39,16 @@ function createDb(): Db {
   const databaseUrl = process.env.DATABASE_URL;
   if (databaseUrl) {
     return drizzlePostgres({
-      connection: { url: databaseUrl, prepare: false },
+      // max:1 — recomendación oficial de Supabase/postgres.js para entornos
+      // serverless (Vercel): cada instancia de función es efectivamente un
+      // proceso propio con su propio singleton `db` (ver el cache en
+      // globalForDb más abajo), así que el pool por default de postgres.js
+      // (10 conexiones) multiplicado por cada instancia concurrente puede
+      // agotar rápido el límite de conexiones reales del pooler de
+      // Supabase. Con una sola conexión por instancia, que además se
+      // reutiliza mientras la función siga "warm", alcanza de sobra para el
+      // volumen de un piloto chico.
+      connection: { url: databaseUrl, prepare: false, max: 1, idle_timeout: 20 },
       relations: dbRelations,
     }) as unknown as Db;
   }
