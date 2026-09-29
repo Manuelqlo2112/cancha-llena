@@ -64,6 +64,11 @@ export const invitacionEstadoEnum = pgEnum("invitacion_estado", [
   "rechazada",
 ]);
 
+export const ligaEstadoEnum = pgEnum("liga_estado", [
+  "activa",
+  "pausada",
+]);
+
 export const usuarios = pgTable("usuarios", {
   id: uuid("id").primaryKey().defaultRandom(),
   nombre: text("nombre").notNull(),
@@ -282,6 +287,50 @@ export const solicitudInvitaciones = pgTable(
   (t) => [primaryKey({ columns: [t.solicitudId, t.usuarioId] })],
 );
 
+// Fase 2 del roadmap (retención): un cupo semanal fijo en un horario valle,
+// con un grupo de jugadores que se anota una sola vez y vuelve a jugar cada
+// semana — a diferencia de "buscar rival" (puntual), acá el hábito es la
+// mecánica. Sin cron: la sesión de la semana se materializa on-demand (ver
+// asegurarProximaSesion en lib/ligas.ts) la primera vez que alguien la mira.
+export const ligas = pgTable("ligas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  complejoId: uuid("complejo_id")
+    .notNull()
+    .references(() => complejos.id, { onDelete: "cascade" }),
+  canchaId: uuid("cancha_id")
+    .notNull()
+    .references(() => canchas.id, { onDelete: "cascade" }),
+  nombre: text("nombre").notNull(),
+  diaSemana: integer("dia_semana").notNull(), // 0 = domingo .. 6 = sábado
+  horaInicio: time("hora_inicio").notNull(), // debe ser un slot valle real (packages/db/src/slots.ts)
+  cupoMaximo: integer("cupo_maximo").notNull(),
+  // Contador desnormalizado (igual que solicitudes_rival.cupos_faltantes) —
+  // permite un UPDATE atómico condicionado al inscribirse/salir en vez de
+  // leer-y-escribir, que tendría la misma ventana de carrera que ya se
+  // arregló en unirseSolicitud (ver lib/reservas.ts).
+  cupoOcupado: integer("cupo_ocupado").notNull().default(0),
+  estado: ligaEstadoEnum("estado").notNull().default("activa"),
+  creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const ligaInscripciones = pgTable(
+  "liga_inscripciones",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ligaId: uuid("liga_id")
+      .notNull()
+      .references(() => ligas.id, { onDelete: "cascade" }),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => usuarios.id, { onDelete: "cascade" }),
+    // Salirse de la liga marca esto en false en vez de borrar la fila — así
+    // un jugador que se va y vuelve no pisa el historial de inscripción.
+    activo: boolean("activo").notNull().default(true),
+    inscritoEn: timestamp("inscrito_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("liga_inscripciones_unico").on(table.ligaId, table.usuarioId)],
+);
+
 export const rachas = pgTable("rachas", {
   id: uuid("id").primaryKey().defaultRandom(),
   usuarioId: uuid("usuario_id")
@@ -313,16 +362,20 @@ export const dbRelations = defineRelations(
     rachas,
     authAccounts,
     sesionesMovil,
+    ligas,
+    ligaInscripciones,
   },
   (r) => ({
     complejos: {
       canchas: r.many.canchas(),
       horariosValle: r.many.horariosValle(),
       rachas: r.many.rachas(),
+      ligas: r.many.ligas(),
     },
     canchas: {
       complejo: r.one.complejos({ from: r.canchas.complejoId, to: r.complejos.id }),
       reservas: r.many.reservas(),
+      ligas: r.many.ligas(),
     },
     horariosValle: {
       complejo: r.one.complejos({ from: r.horariosValle.complejoId, to: r.complejos.id }),
@@ -343,6 +396,7 @@ export const dbRelations = defineRelations(
       reservas: r.many.reservas(),
       rachas: r.many.rachas(),
       invitaciones: r.many.solicitudInvitaciones(),
+      ligaInscripciones: r.many.ligaInscripciones(),
       complejoAdmin: r.one.complejos({ from: r.usuarios.complejoAdminId, to: r.complejos.id }),
     },
     pagos: {
@@ -362,6 +416,15 @@ export const dbRelations = defineRelations(
     },
     sesionesMovil: {
       usuario: r.one.usuarios({ from: r.sesionesMovil.usuarioId, to: r.usuarios.id }),
+    },
+    ligas: {
+      complejo: r.one.complejos({ from: r.ligas.complejoId, to: r.complejos.id }),
+      cancha: r.one.canchas({ from: r.ligas.canchaId, to: r.canchas.id }),
+      inscripciones: r.many.ligaInscripciones(),
+    },
+    ligaInscripciones: {
+      liga: r.one.ligas({ from: r.ligaInscripciones.ligaId, to: r.ligas.id }),
+      usuario: r.one.usuarios({ from: r.ligaInscripciones.usuarioId, to: r.usuarios.id }),
     },
   }),
 );

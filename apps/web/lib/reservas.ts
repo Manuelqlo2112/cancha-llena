@@ -535,7 +535,10 @@ export async function responderInvitacion(usuarioId: string, invitacionId: strin
 // Racha semanal (Sección 5 del doc de producto): si el jugador ya tenía una
 // racha en este complejo y la última vez que contó fue dentro de los últimos
 // 8 días, suma uno; si pasó más tiempo, arranca de nuevo en 1.
-async function actualizarRacha(usuarioId: string, complejoId: string | null, fechaISO: string) {
+// Exportada para que lib/ligas.ts (Fase 2: ligas recurrentes) actualice la
+// racha de cada inscripto cuando se materializa la sesión semanal — misma
+// mecánica que un jugador reservando o uniéndose a un partido normal.
+export async function actualizarRacha(usuarioId: string, complejoId: string | null, fechaISO: string) {
   if (!complejoId) return;
   const existente = await db.query.rachas.findFirst({ where: { usuarioId, complejoId } });
   const fecha = new Date(`${fechaISO}T00:00:00`);

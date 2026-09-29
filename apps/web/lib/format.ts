@@ -29,3 +29,7 @@ export function formatFechaCorta(iso: string): string {
 export function formatHora(hhmmss: string): string {
   return hhmmss.slice(0, 5);
 }
+
+// Mismo índice que usa Postgres/JS Date.getDay() (0 = domingo .. 6 = sábado)
+// y la columna dia_semana de horarios_valle/ligas.
+export const DIA_SEMANA_LABEL: readonly string[] = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];

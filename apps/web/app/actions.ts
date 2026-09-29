@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { actualizarUbicacion, cancelarReserva, crearReserva, crearSolicitudRival, responderInvitacion, unirseSolicitud } from "@/lib/reservas";
+import { inscribirseALiga, salirDeLiga } from "@/lib/ligas";
 import { getSessionUser } from "@/lib/session";
 
 export async function reservarCancha(formData: FormData) {
@@ -98,4 +99,28 @@ export async function actualizarUbicacionAction(formData: FormData) {
 
   revalidatePath("/partidos");
   redirect("/partidos?ubicacion=1");
+}
+
+export async function inscribirseALigaAction(formData: FormData) {
+  const ligaId = String(formData.get("ligaId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+
+  const session = await getSessionUser();
+  if (!session) redirect(`/login?next=/complejos/${slug}`);
+
+  const resultado = await inscribirseALiga(session.id, ligaId);
+  revalidatePath(`/complejos/${slug}`);
+  redirect(`/complejos/${slug}${resultado.ok ? "?liga=1" : `?error=${resultado.error}`}`);
+}
+
+export async function salirDeLigaAction(formData: FormData) {
+  const ligaId = String(formData.get("ligaId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+
+  const session = await getSessionUser();
+  if (!session) redirect(`/login?next=/complejos/${slug}`);
+
+  const resultado = await salirDeLiga(session.id, ligaId);
+  revalidatePath(`/complejos/${slug}`);
+  redirect(`/complejos/${slug}${resultado.ok ? "?liga=salida" : `?error=${resultado.error}`}`);
 }

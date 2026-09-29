@@ -5,6 +5,8 @@ import {
   complejos,
   db,
   horariosValle,
+  ligaInscripciones,
+  ligas,
   pagos,
   participantesReserva,
   rachas,
@@ -22,6 +24,8 @@ export async function resetDb() {
   await db.delete(solicitudesRival);
   await db.delete(participantesReserva);
   await db.delete(rachas);
+  await db.delete(ligaInscripciones);
+  await db.delete(ligas);
   await db.delete(reservas);
   await db.delete(horariosValle);
   await db.delete(canchas);

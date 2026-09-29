@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@cancha-llena/db";
+import { SLOTS_VALLE } from "@cancha-llena/db/slots";
 import { Card } from "@/components/Card";
 import { StatTile } from "@/components/StatTile";
 import { OccupancyBars } from "@/components/OccupancyBars";
-import { DEPORTE_LABEL, formatCLP } from "@/lib/format";
+import { DEPORTE_LABEL, DIA_SEMANA_LABEL, formatCLP, formatHora } from "@/lib/format";
 import { calcularOcupacionPorCancha, VENTANA_DIAS } from "@/lib/occupancy";
 import { getSessionUser, puedeAdministrar } from "@/lib/session";
 import { obtenerImpactoGamificacion } from "@/lib/adminGestion";
-import { actualizarCanchaAction, actualizarComplejoAction } from "@/app/admin/actions";
+import { actualizarCanchaAction, actualizarComplejoAction, crearLigaAction } from "@/app/admin/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,8 @@ const MENSAJES: Record<string, string> = {
   guardado: "Cambios guardados.",
   error_sin_permiso: "No tenés permiso para editar esto.",
   error_no_encontrada: "Esa cancha ya no existe.",
-  error_datos_invalidos: "Revisá los datos — el precio tiene que ser mayor a 0, y el % de abono entre 1 y 100.",
+  error_cancha_no_existe: "Esa cancha no existe en este complejo.",
+  error_datos_invalidos: "Revisá los datos ingresados en el formulario.",
 };
 
 export default async function AdminComplejoPage({
@@ -89,6 +91,11 @@ export default async function AdminComplejoPage({
     .reduce((acc, p) => acc + Number(p.monto), 0);
 
   const impacto = await obtenerImpactoGamificacion(complejo.id);
+  const ligasDelComplejo = await db.query.ligas.findMany({
+    where: { complejoId: complejo.id },
+    with: { cancha: { columns: { nombre: true } } },
+    orderBy: { diaSemana: "asc" },
+  });
 
   return (
     <div>
@@ -255,6 +262,115 @@ export default async function AdminComplejoPage({
 
           <button type="submit" className="mt-1 self-start rounded-md px-4 py-2 text-sm font-medium" style={{ background: "var(--series-valle)", color: "white" }}>
             Guardar configuración
+          </button>
+        </form>
+      </Card>
+
+      <Card className="mt-6">
+        <h2 className="mb-1 font-medium">Ligas recurrentes</h2>
+        <p className="mb-4 text-sm" style={{ color: "var(--text-secondary)" }}>
+          Un cupo semanal fijo en horario valle para un grupo de jugadores que vuelve cada semana — a diferencia de
+          "buscar rival" (puntual), acá el hábito es la mecánica.
+        </p>
+
+        {ligasDelComplejo.length > 0 ? (
+          <ul className="mb-4 flex flex-col gap-2">
+            {ligasDelComplejo.map((liga) => (
+              <li
+                key={liga.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm"
+                style={{ background: "var(--chart-surface)" }}
+              >
+                <span>
+                  <span className="font-medium">{liga.nombre}</span>{" "}
+                  <span style={{ color: "var(--text-muted)" }}>
+                    · {liga.cancha!.nombre} · {DIA_SEMANA_LABEL[liga.diaSemana]} {formatHora(liga.horaInicio)} · {liga.cupoOcupado}/{liga.cupoMaximo} inscriptos
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <form action={crearLigaAction} className="flex flex-col gap-3">
+          <input type="hidden" name="complejoId" value={complejo.id} />
+          <input type="hidden" name="slug" value={slug} />
+
+          <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+            Nombre
+            <input
+              type="text"
+              name="nombre"
+              placeholder="Liga de los martes"
+              required
+              className="rounded-md border px-3 py-2 text-sm"
+              style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+            />
+          </label>
+
+          <div className="grid gap-3 sm:grid-cols-4">
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              Cancha
+              <select
+                name="canchaId"
+                required
+                className="rounded-md border px-2 py-2 text-sm"
+                style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+              >
+                {complejo.canchas.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              Día
+              <select
+                name="diaSemana"
+                required
+                className="rounded-md border px-2 py-2 text-sm"
+                style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+              >
+                {/* Solo lun-vie (índices 1-5): fin de semana no es horario valle. */}
+                {DIA_SEMANA_LABEL.map((label, i) => (i >= 1 && i <= 5 ? (
+                  <option key={label} value={i}>
+                    {label}
+                  </option>
+                ) : null))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              Horario valle
+              <select
+                name="horaInicio"
+                required
+                className="rounded-md border px-2 py-2 text-sm"
+                style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+              >
+                {SLOTS_VALLE.map((hora) => (
+                  <option key={hora} value={hora}>
+                    {hora}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              Cupo máximo
+              <input
+                type="number"
+                name="cupoMaximo"
+                min={1}
+                defaultValue={complejo.canchas[0]?.capacidadJugadores ?? 10}
+                required
+                className="rounded-md border px-2 py-2 text-sm"
+                style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+              />
+            </label>
+          </div>
+
+          <button type="submit" className="mt-1 self-start rounded-md px-4 py-2 text-sm font-medium" style={{ background: "var(--series-valle)", color: "white" }}>
+            Crear liga
           </button>
         </form>
       </Card>

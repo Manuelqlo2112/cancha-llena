@@ -3,9 +3,10 @@ import { db } from "@cancha-llena/db";
 import { slotsDelDia } from "@cancha-llena/db/slots";
 import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
-import { DEPORTE_LABEL, formatCLP } from "@/lib/format";
+import { DEPORTE_LABEL, DIA_SEMANA_LABEL, formatCLP, formatHora } from "@/lib/format";
 import { getSessionUser } from "@/lib/session";
-import { reservarCancha, buscarRivalAction } from "@/app/actions";
+import { reservarCancha, buscarRivalAction, inscribirseALigaAction, salirDeLigaAction } from "@/app/actions";
+import { listarLigasDeComplejo } from "@/lib/ligas";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,10 @@ const MENSAJES: Record<string, string> = {
   error_sin_permiso: "No podés hacer eso en esa reserva.",
   error_no_encontrada: "No encontramos esa reserva.",
   error_datos_invalidos: "Esos datos no son válidos — probá de nuevo.",
+  error_ya_inscrito: "Ya estabas anotado en esa liga.",
+  error_sin_cupo: "Esa liga ya está completa.",
+  error_pausada: "Esa liga está pausada por ahora.",
+  error_no_inscrito: "No estabas anotado en esa liga.",
 };
 
 export default async function ComplejoPage({
@@ -28,7 +33,7 @@ export default async function ComplejoPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ dia?: string; reservado?: string; solicitud?: string; error?: string }>;
+  searchParams: Promise<{ dia?: string; reservado?: string; solicitud?: string; error?: string; liga?: string }>;
 }) {
   const { slug } = await params;
   const sp = await searchParams;
@@ -58,6 +63,7 @@ export default async function ComplejoPage({
   if (!complejo) notFound();
 
   const mensajeError = sp.error ? MENSAJES[`error_${sp.error}`] : null;
+  const ligas = await listarLigasDeComplejo(complejo.id, session?.id ?? null);
 
   return (
     <div>
@@ -95,6 +101,66 @@ export default async function ComplejoPage({
       {mensajeError ? (
         <div className="mb-6 rounded-lg px-4 py-2.5 text-sm" style={{ background: "var(--chart-surface)", color: "var(--text-secondary)", border: "1px solid var(--gridline)" }}>
           {mensajeError}
+        </div>
+      ) : null}
+
+      {sp.liga ? (
+        <div className="mb-6 rounded-lg px-4 py-2.5 text-sm" style={{ background: "var(--chart-surface)", color: "var(--text-secondary)", border: "1px solid var(--gridline)" }}>
+          {sp.liga === "salida" ? "Saliste de la liga." : "¡Anotado! Te esperamos todas las semanas en ese horario."}
+        </div>
+      ) : null}
+
+      {ligas.length > 0 ? (
+        <div className="mb-6">
+          <h2 className="mb-3 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            Ligas recurrentes
+          </h2>
+          <div className="flex flex-col gap-3">
+            {ligas.map((liga) => (
+              <Card key={liga.id}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{liga.nombre}</p>
+                    <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                      {liga.cancha.nombre} · {DEPORTE_LABEL[liga.cancha.deporte] ?? liga.cancha.deporte}
+                    </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+                      <span>{DIA_SEMANA_LABEL[liga.diaSemana]} {formatHora(liga.horaInicio)}</span>
+                      <Badge tone={liga.cupoOcupado >= liga.cupoMaximo ? "warning" : "accent"}>
+                        {liga.cupoOcupado}/{liga.cupoMaximo} anotados
+                      </Badge>
+                    </p>
+                  </div>
+                  {!session ? (
+                    <a href={`/login?next=/complejos/${slug}`} className="rounded-md px-3 py-1.5 text-sm font-medium" style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}>
+                      Iniciá sesión
+                    </a>
+                  ) : liga.inscrito ? (
+                    <form action={salirDeLigaAction}>
+                      <input type="hidden" name="ligaId" value={liga.id} />
+                      <input type="hidden" name="slug" value={slug} />
+                      <button type="submit" className="rounded-md px-3 py-1.5 text-sm font-medium" style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}>
+                        Salir
+                      </button>
+                    </form>
+                  ) : (
+                    <form action={inscribirseALigaAction}>
+                      <input type="hidden" name="ligaId" value={liga.id} />
+                      <input type="hidden" name="slug" value={slug} />
+                      <button
+                        type="submit"
+                        disabled={liga.cupoOcupado >= liga.cupoMaximo}
+                        className="rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                        style={{ background: "var(--series-prime)", color: "white" }}
+                      >
+                        Anotarme
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
       ) : null}
 
