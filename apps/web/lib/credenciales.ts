@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, usuarios } from "@cancha-llena/db";
 
@@ -48,4 +49,27 @@ export async function registrarConCredenciales(nombre: string, email: string, pa
     }
     throw err;
   }
+}
+
+export type CambiarContrasenaResult = { ok: true } | { ok: false; error: "sin_password" | "actual_incorrecta" | "datos_invalidos" };
+
+// Nada de esto existía antes: las cuentas admin sembradas (y cualquier
+// cuenta a la que le generemos una contraseña a mano) no tenían forma de
+// que el dueño la cambiara por una propia sin pedirle a un desarrollador
+// que la actualizara directo en la base.
+export async function cambiarContrasena(usuarioId: string, actual: string, nueva: string): Promise<CambiarContrasenaResult> {
+  if (nueva.length < 8 || nueva.length > 200) return { ok: false, error: "datos_invalidos" };
+
+  const usuario = await db.query.usuarios.findFirst({ where: { id: usuarioId } });
+  // Cuenta OAuth pura (Google/Microsoft) sin contraseña — no hay "actual"
+  // contra qué comparar. Ofrecer un flujo de "crear contraseña" sin
+  // verificación previa queda fuera de alcance por ahora.
+  if (!usuario?.passwordHash) return { ok: false, error: "sin_password" };
+
+  const coincide = await bcrypt.compare(actual, usuario.passwordHash);
+  if (!coincide) return { ok: false, error: "actual_incorrecta" };
+
+  const passwordHash = await bcrypt.hash(nueva, 10);
+  await db.update(usuarios).set({ passwordHash }).where(eq(usuarios.id, usuarioId));
+  return { ok: true };
 }

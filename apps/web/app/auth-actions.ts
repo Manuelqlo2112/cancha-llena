@@ -3,8 +3,8 @@
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { auth, signIn, signOut } from "@/auth";
-import { registrarConCredenciales } from "@/lib/credenciales";
-import { clearDevSession, setDevSessionUser } from "@/lib/session";
+import { cambiarContrasena, registrarConCredenciales } from "@/lib/credenciales";
+import { clearDevSession, getSessionUser, setDevSessionUser } from "@/lib/session";
 import { devLoginHabilitado } from "@/lib/devAuth";
 
 export async function signInGoogleAction(formData: FormData) {
@@ -50,6 +50,19 @@ export async function registrarUsuarioAction(formData: FormData) {
     }
     throw error;
   }
+}
+
+export async function cambiarContrasenaAction(formData: FormData) {
+  const session = await getSessionUser();
+  if (!session) redirect("/login?next=/perfil");
+
+  const actual = String(formData.get("actual") ?? "");
+  const nueva = String(formData.get("nueva") ?? "");
+  const confirmacion = String(formData.get("confirmacion") ?? "");
+  if (nueva !== confirmacion) redirect("/perfil?error=no_coincide");
+
+  const resultado = await cambiarContrasena(session.id, actual, nueva);
+  redirect(resultado.ok ? "/perfil?contrasena=1" : `/perfil?error=${resultado.error}`);
 }
 
 // Cierra la sesión que corresponda: la real de Auth.js si existe, si no la

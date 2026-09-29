@@ -4,7 +4,7 @@ import { getSessionUser } from "@/lib/session";
 import { obtenerMisRachas } from "@/lib/reservas";
 import { nivelesDeJugador } from "@/lib/resultados";
 import { DEPORTE_LABEL } from "@/lib/format";
-import { cerrarSesionUniversal } from "@/app/auth-actions";
+import { cambiarContrasenaAction, cerrarSesionUniversal } from "@/app/auth-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +14,22 @@ const ROL_LABEL: Record<string, string> = {
   super_admin: "Super admin",
 };
 
-export default async function PerfilPage() {
+const MENSAJES: Record<string, string> = {
+  contrasena: "Contraseña actualizada.",
+  error_no_coincide: "La confirmación no coincide con la contraseña nueva.",
+  error_actual_incorrecta: "La contraseña actual no es correcta.",
+  error_datos_invalidos: "La contraseña nueva tiene que tener entre 8 y 200 caracteres.",
+  error_sin_password: "Esta cuenta entra con Google o Microsoft — no tiene contraseña para cambiar.",
+};
+
+export default async function PerfilPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ contrasena?: string; error?: string }>;
+}) {
   const session = await getSessionUser();
+  const sp = await searchParams;
+  const mensaje = sp.contrasena ? MENSAJES.contrasena : sp.error ? MENSAJES[`error_${sp.error}`] : null;
 
   if (!session) {
     return (
@@ -53,6 +67,12 @@ export default async function PerfilPage() {
           {ROL_LABEL[session.rol] ?? session.rol}
         </span>
       </div>
+
+      {mensaje ? (
+        <div className="mb-6 rounded-lg px-4 py-2.5 text-sm" style={{ background: "var(--chart-surface)", color: "var(--text-secondary)", border: "1px solid var(--gridline)" }}>
+          {mensaje}
+        </div>
+      ) : null}
 
       <div className="mb-6 grid grid-cols-2 gap-3">
         <Card className="text-center">
@@ -100,6 +120,46 @@ export default async function PerfilPage() {
             ))}
           </div>
         </div>
+      ) : null}
+
+      {session.passwordHash ? (
+        <Card className="mb-6">
+          <h2 className="mb-3 text-sm font-medium">Cambiar contraseña</h2>
+          <form action={cambiarContrasenaAction} className="flex flex-col gap-2">
+            <input
+              type="password"
+              name="actual"
+              placeholder="Contraseña actual"
+              required
+              autoComplete="current-password"
+              className="rounded-md border px-3 py-2 text-sm"
+              style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+            />
+            <input
+              type="password"
+              name="nueva"
+              placeholder="Contraseña nueva"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="rounded-md border px-3 py-2 text-sm"
+              style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+            />
+            <input
+              type="password"
+              name="confirmacion"
+              placeholder="Repetí la contraseña nueva"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="rounded-md border px-3 py-2 text-sm"
+              style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+            />
+            <button type="submit" className="mt-1 self-start rounded-md px-4 py-2 text-sm font-medium" style={{ background: "var(--series-valle)", color: "white" }}>
+              Guardar contraseña
+            </button>
+          </form>
+        </Card>
       ) : null}
 
       <div className="flex justify-center gap-4 text-sm">

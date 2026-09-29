@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { registrarConCredenciales, verificarCredenciales } from "@/lib/credenciales";
-import { resetDb } from "./helpers";
+import { cambiarContrasena, registrarConCredenciales, verificarCredenciales } from "@/lib/credenciales";
+import { crearUsuarioFixture, resetDb } from "./helpers";
 
 beforeEach(resetDb);
 
@@ -53,5 +53,41 @@ describe("verificarCredenciales", () => {
   it("rechaza un email que no existe", async () => {
     const u = await verificarCredenciales("nadie@mail.cl", "cualquiera");
     expect(u).toBeNull();
+  });
+});
+
+describe("cambiarContrasena", () => {
+  it("cambia la contraseña cuando la actual es correcta, y la nueva sirve para loguear", async () => {
+    const r = await registrarConCredenciales("Ana Test", "ana@mail.cl", "supersecreta");
+    if (!r.ok) throw new Error("fixture");
+
+    const cambio = await cambiarContrasena(r.usuario.id, "supersecreta", "nuevaClave123");
+    expect(cambio).toEqual({ ok: true });
+
+    expect(await verificarCredenciales("ana@mail.cl", "nuevaClave123")).not.toBeNull();
+    expect(await verificarCredenciales("ana@mail.cl", "supersecreta")).toBeNull();
+  });
+
+  it("rechaza si la contraseña actual no coincide, sin tocar la contraseña guardada", async () => {
+    const r = await registrarConCredenciales("Ana Test", "ana@mail.cl", "supersecreta");
+    if (!r.ok) throw new Error("fixture");
+
+    const cambio = await cambiarContrasena(r.usuario.id, "incorrecta", "nuevaClave123");
+    expect(cambio).toEqual({ ok: false, error: "actual_incorrecta" });
+    expect(await verificarCredenciales("ana@mail.cl", "supersecreta")).not.toBeNull();
+  });
+
+  it("rechaza una cuenta sin contraseña (OAuth)", async () => {
+    const oauthUser = await crearUsuarioFixture({ passwordHash: null });
+    const r = await cambiarContrasena(oauthUser.id, "cualquiera", "nuevaClave123");
+    expect(r).toEqual({ ok: false, error: "sin_password" });
+  });
+
+  it("rechaza una contraseña nueva demasiado corta", async () => {
+    const r = await registrarConCredenciales("Ana Test", "ana@mail.cl", "supersecreta");
+    if (!r.ok) throw new Error("fixture");
+
+    const cambio = await cambiarContrasena(r.usuario.id, "supersecreta", "corta");
+    expect(cambio).toEqual({ ok: false, error: "datos_invalidos" });
   });
 });
