@@ -12,6 +12,11 @@ export default databaseUrl
       schema: "./src/schema.ts",
       dialect: "postgresql",
       dbCredentials: { url: databaseUrl },
+      // Supabase tiene sus propios schemas internos (auth, storage, realtime,
+      // vault, extensions) con sus propias tablas — sin este filtro,
+      // drizzle-kit los trata como "no están en mi schema.ts" y ofrece
+      // BORRARLOS. Nuestro esquema vive entero en `public`.
+      schemaFilter: ["public"],
     })
   : defineConfig({
       out: "./drizzle",
