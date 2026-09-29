@@ -5,6 +5,7 @@ import { Card } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { DEPORTE_LABEL, DIA_SEMANA_LABEL, formatCLP, formatHora } from "@/lib/format";
 import { getSessionUser } from "@/lib/session";
+import { tieneDescuentoValle } from "@/lib/reservas";
 import { reservarCancha, buscarRivalAction, inscribirseALigaAction, salirDeLigaAction } from "@/app/actions";
 import { listarLigasDeComplejo } from "@/lib/ligas";
 
@@ -33,7 +34,7 @@ export default async function ComplejoPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ dia?: string; reservado?: string; solicitud?: string; error?: string; liga?: string }>;
+  searchParams: Promise<{ dia?: string; reservado?: string; descuento?: string; solicitud?: string; error?: string; liga?: string }>;
 }) {
   const { slug } = await params;
   const sp = await searchParams;
@@ -64,6 +65,7 @@ export default async function ComplejoPage({
 
   const mensajeError = sp.error ? MENSAJES[`error_${sp.error}`] : null;
   const ligas = await listarLigasDeComplejo(complejo.id, session?.id ?? null);
+  const descuentoActivo = session ? await tieneDescuentoValle(session.id, complejo.id) : false;
 
   return (
     <div>
@@ -97,6 +99,15 @@ export default async function ComplejoPage({
           </p>
         ) : null}
       </div>
+
+      {descuentoActivo ? (
+        <div
+          className="mb-6 rounded-lg px-4 py-2.5 text-sm"
+          style={{ background: "color-mix(in srgb, var(--series-prime) 12%, var(--chart-surface))", border: "1px solid var(--gridline)" }}
+        >
+          🔥 Tu racha te da <strong>15% de descuento</strong> en horarios valle acá — se aplica solo con reservar.
+        </div>
+      ) : null}
 
       {mensajeError ? (
         <div className="mb-6 rounded-lg px-4 py-2.5 text-sm" style={{ background: "var(--chart-surface)", color: "var(--text-secondary)", border: "1px solid var(--gridline)" }}>
@@ -177,7 +188,7 @@ export default async function ComplejoPage({
           style={{ background: "color-mix(in srgb, var(--status-good) 12%, var(--chart-surface))", border: "1px solid var(--gridline)" }}
         >
           <div>
-            <p className="font-medium">¡Reserva confirmada!</p>
+            <p className="font-medium">¡Reserva confirmada!{sp.descuento ? " 🔥 Con 15% de descuento por tu racha." : ""}</p>
             <p style={{ color: "var(--text-secondary)" }}>¿Tenés los equipos completos, o te faltan jugadores?</p>
           </div>
           <div className="flex items-center gap-2">
@@ -231,7 +242,10 @@ export default async function ComplejoPage({
                 <h2 className="font-medium">
                   {cancha.nombre} <span style={{ color: "var(--text-muted)" }}>· {DEPORTE_LABEL[cancha.deporte] ?? cancha.deporte}</span>
                 </h2>
-                <span className="text-sm" style={{ color: "var(--text-secondary)" }}>{formatCLP(Number(cancha.precioBase))} / hora</span>
+                <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                  {formatCLP(Number(cancha.precioBase))} / hora
+                  {descuentoActivo ? <span style={{ color: "var(--series-prime)" }}> · 🔥 -15% en valle</span> : null}
+                </span>
               </div>
 
               {libres.length === 0 ? (

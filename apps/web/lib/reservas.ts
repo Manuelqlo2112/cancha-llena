@@ -13,8 +13,24 @@ const RADIO_INVITACION_KM = 8;
 // móvil (app/api/**, con header + JSON) — un solo lugar para no desalinear
 // las dos superficies.
 
+// Fase 2 (retención): descuento gamificado en horas valle. La racha ya
+// mostraba un badge "Recompensa desbloqueada" a los 4+ semanas seguidas sin
+// que eso tuviera ningún efecto real — esto le da sustancia: mientras la
+// racha siga VIGENTE (no alcanza con haberla desbloqueado alguna vez, tiene
+// que seguir sin cortarse — mismo criterio de "vigente" que ya usa
+// obtenerMisRachas) cada reserva en horario valle de ESE complejo sale con
+// descuento.
+const DESCUENTO_RACHA_PCT = 15;
+
+export async function tieneDescuentoValle(usuarioId: string, complejoId: string): Promise<boolean> {
+  const racha = await db.query.rachas.findFirst({ where: { usuarioId, complejoId } });
+  if (!racha || !racha.recompensaDesbloqueada || !racha.ultimaFechaValida) return false;
+  const diasDesdeUltima = Math.round((Date.now() - new Date(`${racha.ultimaFechaValida}T00:00:00`).getTime()) / 86_400_000);
+  return diasDesdeUltima <= 8;
+}
+
 export type CrearReservaResult =
-  | { ok: true; reservaId: string }
+  | { ok: true; reservaId: string; descuentoAplicado: boolean }
   | { ok: false; error: "cancha_no_existe" | "ocupado" | "fecha_pasada" | "datos_invalidos" };
 
 export async function crearReserva(usuarioId: string, canchaId: string, fecha: string, hora: string): Promise<CrearReservaResult> {
@@ -44,7 +60,9 @@ export async function crearReserva(usuarioId: string, canchaId: string, fecha: s
   if (yaExiste) return { ok: false, error: "ocupado" };
 
   const esHorarioValle = esDiaLaboral(new Date(`${fecha}T00:00:00`)) && (SLOTS_VALLE as readonly string[]).includes(hora);
-  const montoTotal = Number(cancha.precioBase);
+  const descuentoAplicado = esHorarioValle && (await tieneDescuentoValle(usuarioId, cancha.complejoId));
+  const precioBase = Number(cancha.precioBase);
+  const montoTotal = descuentoAplicado ? Math.round((precioBase * (100 - DESCUENTO_RACHA_PCT)) / 100 / 1000) * 1000 : precioBase;
   const montoAbono = complejo.requiereAbono
     ? Math.round((montoTotal * (Number(complejo.porcentajeAbono) / 100)) / 1000) * 1000
     : 0;
@@ -93,7 +111,7 @@ export async function crearReserva(usuarioId: string, canchaId: string, fecha: s
   await db.insert(participantesReserva).values({ reservaId: reserva!.id, usuarioId, confirmado: true });
   await actualizarRacha(usuarioId, cancha.complejoId, fecha);
 
-  return { ok: true, reservaId: reserva!.id };
+  return { ok: true, reservaId: reserva!.id, descuentoAplicado };
 }
 
 export type UnirseResult = { ok: true } | { ok: false; error: "solicitud_cerrada" | "ya_unido" };

@@ -23,7 +23,7 @@ export async function reservarCancha(formData: FormData) {
   revalidatePath(`/admin/${returnTo}`);
   // Se manda el id de la reserva (no solo "1") para poder ofrecer, ahí mismo,
   // "¿te faltan jugadores?" con esa reserva puntual.
-  redirect(`/complejos/${returnTo}?reservado=${resultado.reservaId}`);
+  redirect(`/complejos/${returnTo}?reservado=${resultado.reservaId}${resultado.descuentoAplicado ? "&descuento=1" : ""}`);
 }
 
 export async function unirseComoRival(formData: FormData) {

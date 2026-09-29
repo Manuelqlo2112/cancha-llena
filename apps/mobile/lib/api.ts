@@ -98,7 +98,7 @@ export type Liga = {
   inscrito: boolean;
 };
 
-export type ComplejoDetalle = ComplejoResumen & { canchas: CanchaDetalle[]; ligas: Liga[] };
+export type ComplejoDetalle = ComplejoResumen & { canchas: CanchaDetalle[]; ligas: Liga[]; descuentoActivo: boolean };
 
 export type MiReserva = {
   id: string;
@@ -220,7 +220,7 @@ export const api = {
   listarComplejos: () => request<{ complejos: ComplejoResumen[] }>("/api/complejos", { formaFija: true }),
   obtenerComplejo: (slug: string) => request<{ complejo: ComplejoDetalle }>(`/api/complejos/${slug}`, { formaFija: true }),
   reservar: (canchaId: string, fecha: string, hora: string) =>
-    request<{ ok: boolean; reservaId?: string; error?: string }>("/api/reservas", { method: "POST", body: { canchaId, fecha, hora } }),
+    request<{ ok: boolean; reservaId?: string; descuentoAplicado?: boolean; error?: string }>("/api/reservas", { method: "POST", body: { canchaId, fecha, hora } }),
   unirseSolicitud: (solicitudId: string) =>
     request<{ ok: boolean; error?: string }>(`/api/solicitudes/${solicitudId}/unirse`, { method: "POST" }),
   listarSolicitudes: () => request<{ solicitudes: SolicitudAbierta[] }>("/api/solicitudes", { formaFija: true }),

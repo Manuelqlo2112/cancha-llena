@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { db } from "@cancha-llena/db";
-import { actualizarUbicacion, crearReserva } from "@/lib/reservas";
+import { db, rachas } from "@cancha-llena/db";
+import { actualizarUbicacion, crearReserva, tieneDescuentoValle } from "@/lib/reservas";
 import { crearCanchaFixture, crearComplejoFixture, crearUsuarioFixture, fechaRelativa, resetDb } from "./helpers";
 
 beforeEach(resetDb);
@@ -87,6 +87,72 @@ describe("crearReserva", () => {
 
     const pago = await db.query.pagos.findFirst({ where: { reservaId: r.reservaId } });
     expect(pago).toBeUndefined();
+  });
+});
+
+// Fecha futura garantizada lun-vie — SLOTS_VALLE (10:00/13:00) solo es
+// horario valle de verdad esos días (esDiaLaboral en slots.ts).
+function fechaValleFutura(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+describe("tieneDescuentoValle / descuento gamificado en horas valle", () => {
+  it("false sin racha", async () => {
+    const complejo = await crearComplejoFixture();
+    const jugador = await crearUsuarioFixture();
+    expect(await tieneDescuentoValle(jugador.id, complejo.id)).toBe(false);
+  });
+
+  it("false con racha activa pero sin recompensa desbloqueada (menos de 4 semanas)", async () => {
+    const complejo = await crearComplejoFixture();
+    const jugador = await crearUsuarioFixture();
+    await db.insert(rachas).values({ usuarioId: jugador.id, complejoId: complejo.id, contadorActual: 2, mejorRacha: 2, ultimaFechaValida: fechaRelativa(0), recompensaDesbloqueada: false });
+    expect(await tieneDescuentoValle(jugador.id, complejo.id)).toBe(false);
+  });
+
+  it("true con recompensa desbloqueada y racha vigente (jugó hace poco)", async () => {
+    const complejo = await crearComplejoFixture();
+    const jugador = await crearUsuarioFixture();
+    await db.insert(rachas).values({ usuarioId: jugador.id, complejoId: complejo.id, contadorActual: 5, mejorRacha: 5, ultimaFechaValida: fechaRelativa(-2), recompensaDesbloqueada: true });
+    expect(await tieneDescuentoValle(jugador.id, complejo.id)).toBe(true);
+  });
+
+  it("false con recompensa desbloqueada pero racha ya cortada (más de 8 días sin jugar)", async () => {
+    const complejo = await crearComplejoFixture();
+    const jugador = await crearUsuarioFixture();
+    await db.insert(rachas).values({ usuarioId: jugador.id, complejoId: complejo.id, contadorActual: 5, mejorRacha: 5, ultimaFechaValida: fechaRelativa(-15), recompensaDesbloqueada: true });
+    expect(await tieneDescuentoValle(jugador.id, complejo.id)).toBe(false);
+  });
+
+  it("crearReserva aplica 15% de descuento en un slot valle cuando el descuento está activo", async () => {
+    const complejo = await crearComplejoFixture();
+    const cancha = await crearCanchaFixture(complejo.id, { precioBase: "40000" });
+    const jugador = await crearUsuarioFixture();
+    await db.insert(rachas).values({ usuarioId: jugador.id, complejoId: complejo.id, contadorActual: 5, mejorRacha: 5, ultimaFechaValida: fechaRelativa(-2), recompensaDesbloqueada: true });
+
+    const r = await crearReserva(jugador.id, cancha.id, fechaValleFutura(), "10:00");
+    expect(r).toMatchObject({ ok: true, descuentoAplicado: true });
+    if (!r.ok) return;
+
+    const reserva = await db.query.reservas.findFirst({ where: { id: r.reservaId } });
+    expect(Number(reserva?.montoTotal)).toBe(34000); // 40000 - 15%
+  });
+
+  it("crearReserva NO aplica el descuento en un slot prime aunque esté activo", async () => {
+    const complejo = await crearComplejoFixture();
+    const cancha = await crearCanchaFixture(complejo.id, { precioBase: "40000" });
+    const jugador = await crearUsuarioFixture();
+    await db.insert(rachas).values({ usuarioId: jugador.id, complejoId: complejo.id, contadorActual: 5, mejorRacha: 5, ultimaFechaValida: fechaRelativa(-2), recompensaDesbloqueada: true });
+
+    const r = await crearReserva(jugador.id, cancha.id, fechaRelativa(1), "19:00");
+    expect(r).toMatchObject({ ok: true, descuentoAplicado: false });
+    if (!r.ok) return;
+
+    const reserva = await db.query.reservas.findFirst({ where: { id: r.reservaId } });
+    expect(Number(reserva?.montoTotal)).toBe(40000);
   });
 });
 

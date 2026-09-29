@@ -20,7 +20,7 @@ function formatDiaChip(iso: string) {
 // Confirmación que se dispara justo después de reservar (no un botón aparte
 // en otra pantalla) — así se pregunta en el momento en que de verdad se sabe
 // si el equipo quedó completo o no.
-type PendingConfirm = { reservaId: string; canchaNombre: string; fecha: string; hora: string };
+type PendingConfirm = { reservaId: string; canchaNombre: string; fecha: string; hora: string; descuentoAplicado: boolean };
 
 export default function ComplejoScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -79,7 +79,7 @@ export default function ComplejoScreen() {
       }
       await cargar();
       // En vez de un simple "listo", preguntamos ahí mismo si falta gente.
-      setPendingConfirm({ reservaId: r.reservaId, canchaNombre, fecha, hora });
+      setPendingConfirm({ reservaId: r.reservaId, canchaNombre, fecha, hora, descuentoAplicado: !!r.descuentoAplicado });
     } catch {
       // Sin este catch, un error de red acá quedaba como una promesa
       // rechazada sin atrapar: el botón se destrababa (por el finally) pero
@@ -191,6 +191,11 @@ export default function ComplejoScreen() {
                   <Text style={[styles.muted, { textDecorationLine: "underline", marginTop: 6 }]}>Iniciá sesión para reservar</Text>
                 </Pressable>
               ) : null}
+              {complejo.descuentoActivo ? (
+                <View style={styles.descuentoBanner}>
+                  <Text style={styles.descuentoBannerText}>🔥 Tu racha te da 15% de descuento en horarios valle acá.</Text>
+                </View>
+              ) : null}
             </View>
 
             {/* Calendario: elegís el día primero, todo lo de abajo depende de esto */}
@@ -254,7 +259,9 @@ export default function ComplejoScreen() {
               <Text style={styles.canchaNombre}>
                 {cancha.nombre} <Text style={styles.muted}>· {DEPORTE_LABEL[cancha.deporte] ?? cancha.deporte}</Text>
               </Text>
-              <Text style={styles.precio}>{formatCLP(cancha.precioBase)}/h</Text>
+              <Text style={styles.precio}>
+                {formatCLP(cancha.precioBase)}/h{complejo.descuentoActivo ? <Text style={{ color: colors.seriesPrime }}> · -15% valle</Text> : null}
+              </Text>
             </View>
             {cancha.libres.length === 0 ? (
               <Text style={styles.muted}>Sin horarios libres este día</Text>
@@ -284,7 +291,8 @@ export default function ComplejoScreen() {
       <Modal visible={!!pendingConfirm} transparent animationType="fade" onRequestClose={() => setPendingConfirm(null)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>¡Reserva confirmada!</Text>
+            <Text style={styles.modalTitle}>¡Reserva confirmada!{pendingConfirm?.descuentoAplicado ? " 🔥" : ""}</Text>
+            {pendingConfirm?.descuentoAplicado ? <Text style={[styles.muted, { textAlign: "center", color: colors.seriesPrime }]}>Con 15% de descuento por tu racha</Text> : null}
             <Text style={styles.modalSubtitle}>
               {pendingConfirm?.canchaNombre} · {pendingConfirm && formatDiaChip(pendingConfirm.fecha).numero}/{pendingConfirm?.hora}
             </Text>
@@ -311,6 +319,8 @@ const styles = StyleSheet.create({
   actionBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
   badge: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100, marginTop: 4 },
   badgeText: { color: "white", fontSize: 11, fontWeight: "600" },
+  descuentoBanner: { marginTop: 10, borderRadius: 10, padding: 10, backgroundColor: colors.chartSurface, borderWidth: 1, borderColor: colors.gridline },
+  descuentoBannerText: { fontSize: 12, color: colors.textPrimary, fontWeight: "600" },
 
   diasRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
 

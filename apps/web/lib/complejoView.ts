@@ -1,6 +1,7 @@
 import { db } from "@cancha-llena/db";
 import { slotsDelDia } from "@cancha-llena/db/slots";
 import { listarLigasDeComplejo } from "@/lib/ligas";
+import { tieneDescuentoValle } from "@/lib/reservas";
 
 // Arma la grilla de horarios (libres + ocupados) de un complejo para los
 // próximos DIAS_ADELANTE días — usado por la API que consume la app móvil.
@@ -42,6 +43,7 @@ export async function getComplejoView(slug: string, usuarioId: string | null) {
   if (!complejo) return null;
 
   const ligas = await listarLigasDeComplejo(complejo.id, usuarioId);
+  const descuentoActivo = usuarioId ? await tieneDescuentoValle(usuarioId, complejo.id) : false;
 
   const canchas = complejo.canchas.map((cancha) => {
     const reservaPorSlot = new Map(cancha.reservas.map((r) => [`${r.fecha}|${r.horaInicio.slice(0, 5)}`, r]));
@@ -92,5 +94,6 @@ export async function getComplejoView(slug: string, usuarioId: string | null) {
     porcentajeAbono: Number(complejo.porcentajeAbono),
     canchas,
     ligas,
+    descuentoActivo,
   };
 }
