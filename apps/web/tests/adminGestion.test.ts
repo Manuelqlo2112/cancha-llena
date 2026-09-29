@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@cancha-llena/db";
-import { actualizarCancha, actualizarComplejo, obtenerImpactoGamificacion } from "@/lib/adminGestion";
+import { actualizarCancha, actualizarComplejo, crearCancha, crearComplejo, obtenerImpactoGamificacion } from "@/lib/adminGestion";
 import { crearCanchaFixture, crearComplejoFixture, crearUsuarioFixture, resetDb } from "./helpers";
 
 beforeEach(resetDb);
@@ -141,5 +141,87 @@ describe("obtenerImpactoGamificacion", () => {
     const complejo = await crearComplejoFixture();
     const r = await obtenerImpactoGamificacion(complejo.id);
     expect(r).toEqual({ solicitudesAbiertas: 0, solicitudesTotales: 0, cuposViaSolicitud: 0, jugadoresConRachaActiva: 0 });
+  });
+});
+
+describe("crearComplejo", () => {
+  const datosValidos = {
+    nombre: "Cancha del Sol",
+    comuna: "Ñuñoa",
+    direccion: "Av. Siempre Viva 123",
+    comisionBasePct: 8,
+    comisionVallePct: 14,
+    requiereAbono: false,
+    porcentajeAbono: 0,
+  };
+
+  it("solo super_admin puede crear un complejo", async () => {
+    const admin = await crearUsuarioFixture({ rol: "admin_complejo" });
+    const jugador = await crearUsuarioFixture({ rol: "jugador" });
+    expect(await crearComplejo(admin, datosValidos)).toEqual({ ok: false, error: "sin_permiso" });
+    expect(await crearComplejo(jugador, datosValidos)).toEqual({ ok: false, error: "sin_permiso" });
+  });
+
+  it("genera un slug sin tildes ni ñ a partir del nombre", async () => {
+    const superAdmin = await crearUsuarioFixture({ rol: "super_admin" });
+    const r = await crearComplejo(superAdmin, { ...datosValidos, nombre: "Cancha Ñuñoa Fútbol" });
+    expect(r).toEqual({ ok: true, slug: "cancha-nunoa-futbol" });
+  });
+
+  it("si el slug ya existe le suma un sufijo numérico en vez de chocar", async () => {
+    const superAdmin = await crearUsuarioFixture({ rol: "super_admin" });
+    const primero = await crearComplejo(superAdmin, datosValidos);
+    const segundo = await crearComplejo(superAdmin, datosValidos);
+    expect(primero).toEqual({ ok: true, slug: "cancha-del-sol" });
+    expect(segundo).toEqual({ ok: true, slug: "cancha-del-sol-2" });
+  });
+
+  it("rechaza comisiones fuera de rango", async () => {
+    const superAdmin = await crearUsuarioFixture({ rol: "super_admin" });
+    expect(await crearComplejo(superAdmin, { ...datosValidos, comisionBasePct: -1 })).toEqual({ ok: false, error: "datos_invalidos" });
+    expect(await crearComplejo(superAdmin, { ...datosValidos, comisionVallePct: 101 })).toEqual({ ok: false, error: "datos_invalidos" });
+  });
+
+  it("rechaza nombre, comuna o dirección vacíos", async () => {
+    const superAdmin = await crearUsuarioFixture({ rol: "super_admin" });
+    expect(await crearComplejo(superAdmin, { ...datosValidos, nombre: "  " })).toEqual({ ok: false, error: "datos_invalidos" });
+    expect(await crearComplejo(superAdmin, { ...datosValidos, direccion: "" })).toEqual({ ok: false, error: "datos_invalidos" });
+  });
+});
+
+describe("crearCancha", () => {
+  it("el admin dueño (o super_admin) puede agregar una cancha", async () => {
+    const complejo = await crearComplejoFixture();
+    const admin = await crearUsuarioFixture({ rol: "admin_complejo", complejoAdminId: complejo.id });
+
+    const r = await crearCancha(admin, complejo.id, { nombre: "Cancha 7", deporte: "futbolito", capacidadJugadores: 10, precioBase: 45000 });
+    expect(r).toEqual({ ok: true });
+
+    const canchas = await db.query.canchas.findMany({ where: { complejoId: complejo.id } });
+    expect(canchas).toHaveLength(1);
+    expect(canchas[0]).toMatchObject({ nombre: "Cancha 7", deporte: "futbolito", capacidadJugadores: 10, activo: true });
+  });
+
+  it("rechaza a un admin de otro complejo", async () => {
+    const complejoA = await crearComplejoFixture();
+    const complejoB = await crearComplejoFixture();
+    const adminDeB = await crearUsuarioFixture({ rol: "admin_complejo", complejoAdminId: complejoB.id });
+
+    const r = await crearCancha(adminDeB, complejoA.id, { nombre: "Cancha X", deporte: "futbolito", capacidadJugadores: 10, precioBase: 45000 });
+    expect(r).toEqual({ ok: false, error: "sin_permiso" });
+  });
+
+  it("rechaza un deporte que no es uno de los válidos", async () => {
+    const complejo = await crearComplejoFixture();
+    const admin = await crearUsuarioFixture({ rol: "admin_complejo", complejoAdminId: complejo.id });
+    const r = await crearCancha(admin, complejo.id, { nombre: "Cancha X", deporte: "basquetbol", capacidadJugadores: 10, precioBase: 45000 });
+    expect(r).toEqual({ ok: false, error: "datos_invalidos" });
+  });
+
+  it("rechaza capacidad o precio inválidos", async () => {
+    const complejo = await crearComplejoFixture();
+    const admin = await crearUsuarioFixture({ rol: "admin_complejo", complejoAdminId: complejo.id });
+    expect(await crearCancha(admin, complejo.id, { nombre: "X", deporte: "futbolito", capacidadJugadores: 1, precioBase: 45000 })).toEqual({ ok: false, error: "datos_invalidos" });
+    expect(await crearCancha(admin, complejo.id, { nombre: "X", deporte: "futbolito", capacidadJugadores: 10, precioBase: 0 })).toEqual({ ok: false, error: "datos_invalidos" });
   });
 });

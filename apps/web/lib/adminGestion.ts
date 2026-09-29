@@ -14,6 +14,88 @@ type Sesion = NonNullable<Awaited<ReturnType<typeof getSessionUser>>>;
 
 export type ActualizarResult = { ok: true } | { ok: false; error: "sin_permiso" | "no_encontrada" | "datos_invalidos" };
 
+// Sin tildes/ñ, en minúsculas, separado por guiones — mismo criterio que
+// cualquier slug del resto de la app.
+function slugificar(nombre: string): string {
+  return nombre
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export type CrearComplejoResult = { ok: true; slug: string } | { ok: false; error: "sin_permiso" | "datos_invalidos" };
+
+// Antes de esto, el ÚNICO lugar que insertaba un complejo era el script de
+// seed — agregar un tercer complejo real (más allá del piloto) necesitaba
+// que un desarrollador corriera algo a mano. Solo super_admin: la comisión
+// es el modelo de negocio de la plataforma (mismo motivo que ya impide
+// editarla en actualizarComplejo), así que se define acá, al dar de alta.
+export async function crearComplejo(
+  usuario: Sesion | null,
+  datos: {
+    nombre: string;
+    comuna: string;
+    direccion: string;
+    telefono?: string;
+    email?: string;
+    horarioTexto?: string;
+    comisionBasePct: number;
+    comisionVallePct: number;
+    requiereAbono: boolean;
+    porcentajeAbono: number;
+  },
+): Promise<CrearComplejoResult> {
+  if (usuario?.rol !== "super_admin") return { ok: false, error: "sin_permiso" };
+
+  const nombreLimpio = datos.nombre.trim();
+  const comunaLimpia = datos.comuna.trim();
+  const direccionLimpia = datos.direccion.trim();
+  const comisionValida = (pct: number) => Number.isFinite(pct) && pct >= 0 && pct <= 100;
+  if (
+    !nombreLimpio ||
+    nombreLimpio.length > 150 ||
+    !comunaLimpia ||
+    comunaLimpia.length > 100 ||
+    !direccionLimpia ||
+    direccionLimpia.length > 200 ||
+    !comisionValida(datos.comisionBasePct) ||
+    !comisionValida(datos.comisionVallePct) ||
+    (datos.requiereAbono && (!Number.isFinite(datos.porcentajeAbono) || datos.porcentajeAbono <= 0 || datos.porcentajeAbono > 100))
+  ) {
+    return { ok: false, error: "datos_invalidos" };
+  }
+
+  const slugBase = slugificar(nombreLimpio);
+  if (!slugBase) return { ok: false, error: "datos_invalidos" };
+
+  // Si el slug ya existe (dos complejos con nombre parecido), se le suma un
+  // sufijo numérico en vez de chocar con el unique constraint sin más.
+  let slug = slugBase;
+  let intento = 1;
+  while (await db.query.complejos.findFirst({ where: { slug } })) {
+    intento += 1;
+    slug = `${slugBase}-${intento}`;
+  }
+
+  await db.insert(complejos).values({
+    nombre: nombreLimpio,
+    slug,
+    comuna: comunaLimpia,
+    direccion: direccionLimpia,
+    telefono: datos.telefono?.trim() || null,
+    email: datos.email?.trim() || null,
+    horarioTexto: datos.horarioTexto?.trim() || null,
+    comisionBasePct: String(datos.comisionBasePct),
+    comisionVallePct: String(datos.comisionVallePct),
+    requiereAbono: datos.requiereAbono,
+    porcentajeAbono: String(datos.requiereAbono ? datos.porcentajeAbono : 0),
+  });
+
+  return { ok: true, slug };
+}
+
 export async function actualizarComplejo(
   usuario: Sesion | null,
   complejoId: string,
@@ -112,6 +194,49 @@ export async function actualizarCancha(
     .update(canchas)
     .set({ precioBase: String(datos.precioBase), activo: datos.activo })
     .where(eq(canchas.id, canchaId));
+
+  return { ok: true };
+}
+
+const DEPORTES_VALIDOS = ["futbolito", "futbol", "padel", "tenis"] as const;
+type DeporteValido = (typeof DEPORTES_VALIDOS)[number];
+
+export type CrearCanchaResult = { ok: true } | { ok: false; error: "sin_permiso" | "no_encontrada" | "datos_invalidos" };
+
+// Mismo hueco que crearComplejo: agregar una cancha a un complejo ya
+// existente (piloto o nuevo) tampoco tenía ninguna pantalla, solo el seed.
+export async function crearCancha(
+  usuario: Sesion | null,
+  complejoId: string,
+  datos: { nombre: string; deporte: string; capacidadJugadores: number; precioBase: number },
+): Promise<CrearCanchaResult> {
+  if (!puedeAdministrar(usuario, complejoId)) return { ok: false, error: "sin_permiso" };
+
+  const complejo = await db.query.complejos.findFirst({ where: { id: complejoId } });
+  if (!complejo) return { ok: false, error: "no_encontrada" };
+
+  const nombreLimpio = datos.nombre.trim();
+  if (
+    !nombreLimpio ||
+    nombreLimpio.length > 100 ||
+    !DEPORTES_VALIDOS.includes(datos.deporte as DeporteValido) ||
+    !Number.isInteger(datos.capacidadJugadores) ||
+    datos.capacidadJugadores < 2 ||
+    datos.capacidadJugadores > 30 ||
+    !Number.isFinite(datos.precioBase) ||
+    datos.precioBase <= 0
+  ) {
+    return { ok: false, error: "datos_invalidos" };
+  }
+
+  await db.insert(canchas).values({
+    complejoId,
+    deporte: datos.deporte as DeporteValido,
+    nombre: nombreLimpio,
+    capacidadJugadores: datos.capacidadJugadores,
+    precioBase: String(datos.precioBase),
+    activo: true,
+  });
 
   return { ok: true };
 }

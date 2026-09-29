@@ -9,7 +9,7 @@ import { DEPORTE_LABEL, DIA_SEMANA_LABEL, formatCLP, formatHora } from "@/lib/fo
 import { calcularOcupacionPorCancha, VENTANA_DIAS } from "@/lib/occupancy";
 import { getSessionUser, puedeAdministrar } from "@/lib/session";
 import { obtenerImpactoGamificacion } from "@/lib/adminGestion";
-import { actualizarCanchaAction, actualizarComplejoAction, crearLigaAction } from "@/app/admin/actions";
+import { actualizarCanchaAction, actualizarComplejoAction, crearCanchaAction, crearLigaAction } from "@/app/admin/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -188,6 +188,65 @@ export default async function AdminComplejoPage({
             </form>
           ))}
         </div>
+
+        <form action={crearCanchaAction} className="mt-4 flex flex-wrap items-end gap-3 border-t pt-4" style={{ borderColor: "var(--gridline)" }}>
+          <input type="hidden" name="complejoId" value={complejo.id} />
+          <input type="hidden" name="slug" value={slug} />
+          <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+            Nombre
+            <input
+              type="text"
+              name="nombre"
+              placeholder="Cancha 7"
+              required
+              className="w-28 rounded-md border px-2 py-1.5 text-sm"
+              style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+            Deporte
+            <select
+              name="deporte"
+              required
+              className="rounded-md border px-2 py-1.5 text-sm"
+              style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+            >
+              <option value="futbolito">Fútbolito</option>
+              <option value="futbol">Fútbol</option>
+              <option value="padel">Pádel</option>
+              <option value="tenis">Tenis</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+            Cupo
+            <input
+              type="number"
+              name="capacidadJugadores"
+              min={2}
+              max={30}
+              defaultValue={10}
+              required
+              className="w-16 rounded-md border px-2 py-1.5 text-sm"
+              style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+            Precio/hora
+            <input
+              type="number"
+              name="precioBase"
+              min={1000}
+              step={1000}
+              defaultValue={50000}
+              required
+              className="w-24 rounded-md border px-2 py-1.5 text-sm"
+              style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+            />
+          </label>
+          <button type="submit" className="rounded-md px-3 py-1.5 text-xs font-medium" style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}>
+            Agregar cancha
+          </button>
+        </form>
       </Card>
 
       <Card className="mt-6">
