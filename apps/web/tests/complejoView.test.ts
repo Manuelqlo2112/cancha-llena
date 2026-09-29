@@ -22,6 +22,14 @@ describe("getComplejoView", () => {
     expect(r!.canchas[0]!.slots.every((s) => s.estado === "libre")).toBe(true);
   });
 
+  it("incluye ligas (vacío cuando el complejo no tiene ninguna)", async () => {
+    const complejo = await crearComplejoFixture();
+    await crearCanchaFixture(complejo.id);
+
+    const r = await getComplejoView(complejo.slug, null);
+    expect(r!.ligas).toEqual([]);
+  });
+
   it("no incluye canchas inactivas", async () => {
     const complejo = await crearComplejoFixture();
     await crearCanchaFixture(complejo.id, { activo: false });

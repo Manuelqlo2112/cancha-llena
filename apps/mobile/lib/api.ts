@@ -87,7 +87,18 @@ export type CanchaDetalle = {
   slots: Slot[];
 };
 
-export type ComplejoDetalle = ComplejoResumen & { canchas: CanchaDetalle[] };
+export type Liga = {
+  id: string;
+  nombre: string;
+  diaSemana: number;
+  horaInicio: string;
+  cupoMaximo: number;
+  cupoOcupado: number;
+  cancha: { nombre: string; deporte: string };
+  inscrito: boolean;
+};
+
+export type ComplejoDetalle = ComplejoResumen & { canchas: CanchaDetalle[]; ligas: Liga[] };
 
 export type MiReserva = {
   id: string;
@@ -206,4 +217,6 @@ export const api = {
   listarInvitaciones: () => request<{ invitaciones: InvitacionPendiente[] }>("/api/invitaciones", { requiereSesion: true, formaFija: true }),
   responderInvitacion: (invitacionId: string, respuesta: "aceptada" | "rechazada") =>
     request<{ ok: boolean; unido?: boolean; error?: string }>(`/api/invitaciones/${invitacionId}/responder`, { method: "POST", body: { respuesta } }),
+  inscribirseALiga: (ligaId: string) => request<{ ok: boolean; error?: string }>(`/api/ligas/${ligaId}/inscribirse`, { method: "POST" }),
+  salirDeLiga: (ligaId: string) => request<{ ok: boolean; error?: string }>(`/api/ligas/${ligaId}/salir`, { method: "POST" }),
 };

@@ -7,6 +7,7 @@ import { colors } from "@/lib/theme";
 import { formatCLP } from "@/lib/format";
 
 const DEPORTE_LABEL: Record<string, string> = { futbolito: "Fútbolito", futbol: "Fútbol", padel: "Pádel", tenis: "Tenis" };
+const DIA_SEMANA_LABEL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 function formatDiaChip(iso: string) {
   const d = new Date(`${iso}T00:00:00`);
@@ -32,6 +33,7 @@ export default function ComplejoScreen() {
   const [reservando, setReservando] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
+  const [ligaEnCurso, setLigaEnCurso] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -106,6 +108,37 @@ export default function ComplejoScreen() {
     }
   }
 
+  async function onAnotarmeLiga(ligaId: string) {
+    if (!usuario) return router.push("/login");
+    setLigaEnCurso(ligaId);
+    try {
+      const r = await api.inscribirseALiga(ligaId);
+      if (!r.ok) {
+        const motivo =
+          r.error === "sin_cupo" ? "Esa liga ya está completa." : r.error === "ya_inscrito" ? "Ya estabas anotado." : r.error === "pausada" ? "Esa liga está pausada." : (r.error ?? "");
+        Alert.alert("No se pudo anotar", motivo);
+      }
+      await cargar();
+    } catch {
+      Alert.alert("No se pudo anotar", "Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      setLigaEnCurso(null);
+    }
+  }
+
+  async function onSalirLiga(ligaId: string) {
+    setLigaEnCurso(ligaId);
+    try {
+      const r = await api.salirDeLiga(ligaId);
+      if (!r.ok) Alert.alert("No se pudo salir", r.error ?? "");
+      await cargar();
+    } catch {
+      Alert.alert("No se pudo salir", "Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      setLigaEnCurso(null);
+    }
+  }
+
   if (!complejo) {
     if (errorCarga === "no_existe") {
       return (
@@ -173,6 +206,44 @@ export default function ComplejoScreen() {
                 );
               })}
             </ScrollView>
+
+            {complejo.ligas.length > 0 ? (
+              <View style={styles.ligasSection}>
+                <Text style={styles.ligasTitulo}>Ligas recurrentes</Text>
+                {complejo.ligas.map((liga) => {
+                  const busy = ligaEnCurso === liga.id;
+                  const completa = liga.cupoOcupado >= liga.cupoMaximo;
+                  return (
+                    <View key={liga.id} style={styles.ligaCard}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.ligaNombre}>{liga.nombre}</Text>
+                        <Text style={styles.muted}>
+                          {liga.cancha.nombre} · {DEPORTE_LABEL[liga.cancha.deporte] ?? liga.cancha.deporte}
+                        </Text>
+                        <View style={[styles.badge, { backgroundColor: completa ? colors.statusWarning : colors.seriesPrime, alignSelf: "flex-start", marginTop: 4 }]}>
+                          <Text style={styles.badgeText}>
+                            {DIA_SEMANA_LABEL[liga.diaSemana]} {liga.horaInicio.slice(0, 5)} · {liga.cupoOcupado}/{liga.cupoMaximo} anotados
+                          </Text>
+                        </View>
+                      </View>
+                      {liga.inscrito ? (
+                        <Pressable disabled={busy} style={[styles.actionBtn, { backgroundColor: colors.chartSurface, borderWidth: 1, borderColor: colors.gridline }]} onPress={() => onSalirLiga(liga.id)}>
+                          <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>{busy ? "..." : "Salir"}</Text>
+                        </Pressable>
+                      ) : (
+                        <Pressable
+                          disabled={busy || completa}
+                          style={[styles.actionBtn, { backgroundColor: colors.seriesPrime, opacity: completa ? 0.5 : 1 }]}
+                          onPress={() => onAnotarmeLiga(liga.id)}
+                        >
+                          <Text style={{ color: "white", fontWeight: "600" }}>{busy ? "..." : "Anotarme"}</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
           </View>
         }
         data={canchasConSlotsDelDia}
@@ -242,6 +313,22 @@ const styles = StyleSheet.create({
   badgeText: { color: "white", fontSize: 11, fontWeight: "600" },
 
   diasRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+
+  ligasSection: { paddingHorizontal: 16, paddingBottom: 4, gap: 8 },
+  ligasTitulo: { fontSize: 13, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 },
+  ligaCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.gridline,
+  },
+  ligaNombre: { fontSize: 14, fontWeight: "600", color: colors.textPrimary },
+
   diaChip: { width: 52, paddingVertical: 8, borderRadius: 12, alignItems: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.gridline },
   diaChipDia: { fontSize: 11, color: colors.textMuted, textTransform: "capitalize" },
   diaChipNumero: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, marginTop: 2 },
