@@ -4,9 +4,22 @@ import "./globals.css";
 import { cerrarSesionUniversal } from "@/app/auth-actions";
 import { getSessionUser } from "@/lib/session";
 
+// metadataBase resuelve las URLs absolutas de la imagen de OpenGraph (el
+// ícono de app.png ya puesto en icon.png/opengraph-image.png) — sin esto,
+// compartir el link por WhatsApp no mostraba ninguna preview.
+const SITE_URL = process.env.AUTH_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Cancha Llena",
   description: "Reserva canchas y llena los horarios valle de tu complejo favorito.",
+  openGraph: {
+    title: "Cancha Llena",
+    description: "Reserva canchas y llena los horarios valle de tu complejo favorito.",
+    siteName: "Cancha Llena",
+    locale: "es_CL",
+    type: "website",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
