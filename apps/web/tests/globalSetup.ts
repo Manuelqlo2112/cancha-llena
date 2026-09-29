@@ -12,6 +12,15 @@ import { fileURLToPath } from "node:url";
 const packagesDbDir = fileURLToPath(new URL("../../../packages/db", import.meta.url));
 
 export default async function setup() {
+  // Los tests resetean tablas enteras entre corridas (ver resetDb en
+  // tests/helpers.ts) — si DATABASE_URL quedó seteada en el entorno donde se
+  // corre `pnpm test` (ahora que existe una base Supabase real y compartida
+  // con producción), esa lógica de reseteo se ejecutaría contra datos
+  // reales. Se borra acá, ANTES de que arranquen los workers de Vitest (que
+  // heredan el process.env de este proceso), así los tests siempre usan
+  // PGlite sin importar qué haya en el entorno de quien los corre.
+  delete process.env.DATABASE_URL;
+
   const dataDir = mkdtempSync(path.join(tmpdir(), "cancha-llena-test-db-"));
   process.env.PGLITE_DATA_DIR = dataDir;
 
