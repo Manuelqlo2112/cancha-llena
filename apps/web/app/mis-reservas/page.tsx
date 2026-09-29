@@ -17,6 +17,7 @@ const LIMITE_HISTORIAL_INICIAL = 10;
 const MENSAJES: Record<string, string> = {
   cancelado: "Reserva cancelada.",
   solicitud: "Listo — avisamos que buscás rival para ese partido.",
+  resultado: "Resultado reportado — el nivel se actualizó.",
   error_no_encontrada: "Esa reserva ya no existe.",
   error_sin_permiso: "Esa reserva no es tuya.",
   error_ya_paso: "Ya no se puede modificar (es de hoy o ya pasó).",
@@ -28,11 +29,19 @@ const MENSAJES: Record<string, string> = {
 export default async function MisReservasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cancelado?: string; solicitud?: string; error?: string }>;
+  searchParams: Promise<{ cancelado?: string; solicitud?: string; resultado?: string; error?: string }>;
 }) {
   const session = await getSessionUser();
   const sp = await searchParams;
-  const mensaje = sp.cancelado ? MENSAJES.cancelado : sp.solicitud ? MENSAJES.solicitud : sp.error ? MENSAJES[`error_${sp.error}`] : null;
+  const mensaje = sp.cancelado
+    ? MENSAJES.cancelado
+    : sp.solicitud
+      ? MENSAJES.solicitud
+      : sp.resultado
+        ? MENSAJES.resultado
+        : sp.error
+          ? MENSAJES[`error_${sp.error}`]
+          : null;
 
   if (!session) {
     return (
@@ -171,26 +180,33 @@ function ReservaRow({ r, accionable }: { r: Awaited<ReturnType<typeof obtenerMis
           ) : null}
         </div>
 
-        {accionable && r.esOrganizador && r.estado !== "cancelada" ? (
-          <div className="flex items-center gap-2">
-            {r.puedeBuscarRival ? (
-              <form action={buscarRivalAction}>
+        <div className="flex items-center gap-2">
+          {accionable && r.esOrganizador && r.estado !== "cancelada" ? (
+            <>
+              {r.puedeBuscarRival ? (
+                <form action={buscarRivalAction}>
+                  <input type="hidden" name="reservaId" value={r.id} />
+                  <button type="submit" className="rounded-md px-3 py-1.5 text-xs font-medium" style={{ background: "var(--series-prime)", color: "white" }}>
+                    Buscar rival
+                  </button>
+                </form>
+              ) : r.solicitudAbiertaId ? (
+                <Badge tone="warning">Ya buscando rival</Badge>
+              ) : null}
+              <form action={cancelarReservaAction}>
                 <input type="hidden" name="reservaId" value={r.id} />
-                <button type="submit" className="rounded-md px-3 py-1.5 text-xs font-medium" style={{ background: "var(--series-prime)", color: "white" }}>
-                  Buscar rival
+                <button type="submit" className="rounded-md px-3 py-1.5 text-xs font-medium" style={{ background: "var(--status-critical)", color: "white" }}>
+                  Cancelar
                 </button>
               </form>
-            ) : r.solicitudAbiertaId ? (
-              <Badge tone="warning">Ya buscando rival</Badge>
-            ) : null}
-            <form action={cancelarReservaAction}>
-              <input type="hidden" name="reservaId" value={r.id} />
-              <button type="submit" className="rounded-md px-3 py-1.5 text-xs font-medium" style={{ background: "var(--status-critical)", color: "white" }}>
-                Cancelar
-              </button>
-            </form>
-          </div>
-        ) : null}
+            </>
+          ) : null}
+          {r.puedeReportarResultado ? (
+            <Link href={`/mis-reservas/${r.id}/resultado`} className="rounded-md px-3 py-1.5 text-xs font-medium" style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}>
+              Reportar resultado
+            </Link>
+          ) : null}
+        </div>
       </div>
     </Card>
   );

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
-import { api, SesionInvalidaError, type MiRacha, type MiReserva } from "@/lib/api";
+import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { api, SesionInvalidaError, type MiRacha, type MiReserva, type ReservaParaReportar } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
 import { formatCLP, formatHora } from "@/lib/format";
@@ -33,6 +33,12 @@ export default function MisReservasScreen() {
   const [enCurso, setEnCurso] = useState<string | null>(null);
   const [verTodoHistorial, setVerTodoHistorial] = useState(false);
   const [errorCarga, setErrorCarga] = useState(false);
+  const [modalReservaId, setModalReservaId] = useState<string | null>(null);
+  const [modalData, setModalData] = useState<ReservaParaReportar | null>(null);
+  const [modalCargando, setModalCargando] = useState(false);
+  const [modalEquipos, setModalEquipos] = useState<Record<string, "A" | "B">>({});
+  const [modalGanador, setModalGanador] = useState<"A" | "B" | "empate">("A");
+  const [modalEnviando, setModalEnviando] = useState(false);
 
   const cargar = useCallback(async () => {
     if (!usuario) return;
@@ -108,6 +114,43 @@ export default function MisReservasScreen() {
     }
   }
 
+  async function abrirReportar(reservaId: string) {
+    setModalReservaId(reservaId);
+    setModalCargando(true);
+    setModalData(null);
+    setModalGanador("A");
+    try {
+      const { reserva } = await api.obtenerParticipantesReserva(reservaId);
+      setModalData(reserva);
+      setModalEquipos(Object.fromEntries(reserva.participantes.map((p) => [p.usuarioId, "A" as const])));
+    } catch {
+      Alert.alert("No se pudo cargar", "Revisá tu conexión e intentá de nuevo.");
+      setModalReservaId(null);
+    } finally {
+      setModalCargando(false);
+    }
+  }
+
+  async function enviarResultado() {
+    if (!modalReservaId || !modalData) return;
+    setModalEnviando(true);
+    try {
+      const asignaciones = modalData.participantes.map((p) => ({ usuarioId: p.usuarioId, equipo: modalEquipos[p.usuarioId] ?? "A" }));
+      const r = await api.reportarResultado(modalReservaId, modalGanador, asignaciones);
+      if (!r.ok) {
+        Alert.alert("No se pudo reportar", r.error ?? "");
+        return;
+      }
+      setModalReservaId(null);
+      Alert.alert("Listo", "Resultado reportado — el nivel se actualizó.");
+      await cargar();
+    } catch {
+      Alert.alert("No se pudo reportar", "Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      setModalEnviando(false);
+    }
+  }
+
   const hoyISO = new Date().toISOString().slice(0, 10);
   const proximas = (reservas ?? []).filter((r) => r.fecha >= hoyISO && r.estado !== "cancelada");
   const pasadas = (reservas ?? []).filter((r) => r.fecha < hoyISO || r.estado === "cancelada");
@@ -115,6 +158,7 @@ export default function MisReservasScreen() {
   const ocultas = pasadas.length - pasadasVisibles.length;
 
   return (
+    <>
     <FlatList
       style={{ backgroundColor: colors.page }}
       refreshControl={<RefreshControl refreshing={cargando} onRefresh={cargar} />}
@@ -183,24 +227,94 @@ export default function MisReservasScreen() {
                 Abono pagado: {formatCLP(r.montoAbono)} de {formatCLP(r.montoTotal)}
               </Text>
             ) : null}
-            {accionable && r.esOrganizador && r.estado !== "cancelada" ? (
+            {(accionable && r.esOrganizador && r.estado !== "cancelada") || r.puedeReportarResultado ? (
               <View style={styles.actionsRow}>
-                {r.puedeBuscarRival ? (
-                  <Pressable disabled={busy} style={[styles.actionBtn, { backgroundColor: colors.seriesPrime, opacity: busy ? 0.6 : 1 }]} onPress={() => onBuscarRival(r.id)}>
-                    <Text style={styles.actionBtnText}>Buscar rival</Text>
-                  </Pressable>
-                ) : r.solicitudAbiertaId ? (
-                  <Chip text="Ya buscando rival" bg={colors.statusWarning} />
+                {accionable && r.esOrganizador && r.estado !== "cancelada" ? (
+                  <>
+                    {r.puedeBuscarRival ? (
+                      <Pressable disabled={busy} style={[styles.actionBtn, { backgroundColor: colors.seriesPrime, opacity: busy ? 0.6 : 1 }]} onPress={() => onBuscarRival(r.id)}>
+                        <Text style={styles.actionBtnText}>Buscar rival</Text>
+                      </Pressable>
+                    ) : r.solicitudAbiertaId ? (
+                      <Chip text="Ya buscando rival" bg={colors.statusWarning} />
+                    ) : null}
+                    <Pressable disabled={busy} style={[styles.actionBtn, { backgroundColor: "#d03b3b", opacity: busy ? 0.6 : 1 }]} onPress={() => onCancelar(r.id)}>
+                      <Text style={styles.actionBtnText}>Cancelar</Text>
+                    </Pressable>
+                  </>
                 ) : null}
-                <Pressable disabled={busy} style={[styles.actionBtn, { backgroundColor: "#d03b3b", opacity: busy ? 0.6 : 1 }]} onPress={() => onCancelar(r.id)}>
-                  <Text style={styles.actionBtnText}>Cancelar</Text>
-                </Pressable>
+                {r.puedeReportarResultado ? (
+                  <Pressable style={[styles.actionBtn, { backgroundColor: colors.chartSurface, borderWidth: 1, borderColor: colors.gridline }]} onPress={() => abrirReportar(r.id)}>
+                    <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>Reportar resultado</Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
           </View>
         );
       }}
     />
+
+    <Modal visible={!!modalReservaId} transparent animationType="fade" onRequestClose={() => setModalReservaId(null)}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalCard}>
+          {modalCargando || !modalData ? (
+            <ActivityIndicator />
+          ) : (
+            <ScrollView>
+              <Text style={styles.modalTitle}>Reportar resultado</Text>
+              <Text style={[styles.muted, { textAlign: "center", marginBottom: 4 }]}>
+                {modalData.complejo.nombre} · {modalData.cancha.nombre}
+              </Text>
+              <Text style={[styles.muted, { textAlign: "center", marginBottom: 12 }]}>
+                Sin verificar con el rival — queda fijo una vez cargado.
+              </Text>
+
+              {modalData.participantes.length < 2 ? (
+                <Text style={[styles.muted, { textAlign: "center" }]}>No hubo suficientes jugadores anotados para armar dos equipos.</Text>
+              ) : (
+                <>
+                  <Text style={styles.modalSectionTitle}>Equipos</Text>
+                  {modalData.participantes.map((p) => (
+                    <View key={p.usuarioId} style={styles.equipoRow}>
+                      <Text style={styles.equipoNombre}>{p.nombre}</Text>
+                      <View style={{ flexDirection: "row", gap: 6 }}>
+                        {(["A", "B"] as const).map((eq) => (
+                          <Pressable
+                            key={eq}
+                            style={[styles.pill, modalEquipos[p.usuarioId] === eq && { backgroundColor: colors.seriesValle, borderColor: colors.seriesValle }]}
+                            onPress={() => setModalEquipos((prev) => ({ ...prev, [p.usuarioId]: eq }))}
+                          >
+                            <Text style={[styles.pillText, modalEquipos[p.usuarioId] === eq && { color: "white" }]}>{eq}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  ))}
+
+                  <Text style={styles.modalSectionTitle}>¿Quién ganó?</Text>
+                  <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+                    {(["A", "B", "empate"] as const).map((g) => (
+                      <Pressable key={g} style={[styles.pill, { flex: 1 }, modalGanador === g && { backgroundColor: colors.seriesPrime, borderColor: colors.seriesPrime }]} onPress={() => setModalGanador(g)}>
+                        <Text style={[styles.pillText, { textAlign: "center" }, modalGanador === g && { color: "white" }]}>{g === "empate" ? "Empate" : `Equipo ${g}`}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <Pressable disabled={modalEnviando} style={[styles.modalBtn, { backgroundColor: colors.seriesValle }]} onPress={enviarResultado}>
+                    <Text style={styles.modalBtnText}>{modalEnviando ? "..." : "Reportar resultado"}</Text>
+                  </Pressable>
+                </>
+              )}
+              <Pressable style={[styles.modalBtn, { backgroundColor: colors.chartSurface, borderWidth: 1, borderColor: colors.gridline, marginTop: 8 }]} onPress={() => setModalReservaId(null)}>
+                <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
+              </Pressable>
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 }
 
@@ -227,4 +341,15 @@ const styles = StyleSheet.create({
   actionBtnText: { color: "white", fontSize: 12, fontWeight: "600" },
   verMasBtn: { alignItems: "center", paddingVertical: 12 },
   verMasTexto: { color: colors.seriesValle, fontSize: 13, fontWeight: "600", textDecorationLine: "underline" },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", padding: 24 },
+  modalCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 20, width: "100%", maxWidth: 360, maxHeight: "80%" },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, textAlign: "center" },
+  modalSectionTitle: { fontSize: 13, fontWeight: "700", color: colors.textPrimary, marginTop: 8, marginBottom: 8 },
+  modalBtn: { borderRadius: 10, paddingVertical: 12, alignItems: "center" },
+  modalBtnText: { color: "white", fontWeight: "600", fontSize: 14 },
+  equipoRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  equipoNombre: { fontSize: 13, color: colors.textPrimary, flexShrink: 1 },
+  pill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.gridline, backgroundColor: colors.chartSurface },
+  pillText: { fontSize: 13, fontWeight: "600", color: colors.textPrimary },
 });

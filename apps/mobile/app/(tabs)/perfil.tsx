@@ -1,14 +1,17 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { api, type MiRacha } from "@/lib/api";
+import { api, type MiRacha, type NivelJugador } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
+
+const DEPORTE_LABEL: Record<string, string> = { futbolito: "Fútbolito", futbol: "Fútbol", padel: "Pádel", tenis: "Tenis" };
 
 export default function PerfilScreen() {
   const router = useRouter();
   const { usuario, cerrarSesion } = useSession();
   const [rachas, setRachas] = useState<MiRacha[] | null>(null);
+  const [niveles, setNiveles] = useState<NivelJugador[]>([]);
   const [errorRachas, setErrorRachas] = useState(false);
 
   const cargarRachas = useCallback(() => {
@@ -18,7 +21,10 @@ export default function PerfilScreen() {
     // setSesionInvalidaHandler). Otros errores dejan de mostrar el
     // spinner girando para siempre — antes no había forma de reintentar.
     api.misReservas()
-      .then((r) => setRachas(r.rachas))
+      .then((r) => {
+        setRachas(r.rachas);
+        setNiveles(r.niveles);
+      })
       .catch(() => setErrorRachas(true));
   }, [usuario]);
 
@@ -65,6 +71,19 @@ export default function PerfilScreen() {
         </Pressable>
       ) : !rachas ? (
         <ActivityIndicator style={{ marginTop: 16 }} />
+      ) : null}
+
+      {niveles.length > 0 ? (
+        <View style={{ marginTop: 8 }}>
+          <Text style={styles.sectionTitle}>Tu nivel</Text>
+          {niveles.map((n) => (
+            <View key={n.deporte} style={styles.rachaRow}>
+              <Text style={styles.rachaComplejo}>{DEPORTE_LABEL[n.deporte] ?? n.deporte}</Text>
+              <Text style={styles.rachaValor}>{n.nivel}</Text>
+            </View>
+          ))}
+          <Text style={[styles.muted, { marginTop: -2, marginBottom: 8 }]}>Sube o baja según el resultado que reportás en tus partidos.</Text>
+        </View>
       ) : null}
 
       {rachas && rachas.length > 0 ? (

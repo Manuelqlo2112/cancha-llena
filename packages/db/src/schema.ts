@@ -69,6 +69,10 @@ export const ligaEstadoEnum = pgEnum("liga_estado", [
   "pausada",
 ]);
 
+export const equipoEnum = pgEnum("equipo", ["A", "B"]);
+
+export const equipoGanadorEnum = pgEnum("equipo_ganador", ["A", "B", "empate"]);
+
 export const usuarios = pgTable("usuarios", {
   id: uuid("id").primaryKey().defaultRandom(),
   nombre: text("nombre").notNull(),
@@ -187,6 +191,14 @@ export const reservas = pgTable(
     // 0 cuando el complejo no exige abono (requiereAbono = false)
     montoAbono: numeric("monto_abono", { precision: 10, scale: 0 }).notNull().default("0"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Fase 2 (ranking ELO): resultado autoreportado por cualquier
+    // participante, sin verificación del rival — ver lib/resultados.ts. Null
+    // hasta que alguien lo reporte; una vez reportado queda fijo (no se
+    // permite corregir, para no abrir una disputa que esta mecánica simple
+    // no está pensada para resolver).
+    equipoGanador: equipoGanadorEnum("equipo_ganador"),
+    resultadoReportadoPorId: uuid("resultado_reportado_por_id").references(() => usuarios.id),
+    resultadoReportadoEn: timestamp("resultado_reportado_en", { withTimezone: true }),
   },
   (table) => [
     // Backstop a nivel DB contra el double-booking: el check "yaExiste" en
@@ -213,6 +225,9 @@ export const participantesReserva = pgTable(
     // Es el dato que sostiene el argumento comercial de la Sección 04 del doc
     // de producto: "cuántas reservas vinieron de una mecánica específica".
     viaSolicitudRival: boolean("via_solicitud_rival").notNull().default(false),
+    // Se asigna recién al reportar el resultado (lib/resultados.ts), no al
+    // anotarse — nadie arma equipos de antemano en esta mecánica simple.
+    equipo: equipoEnum("equipo"),
   },
   (table) => [
     // Un mismo usuario no puede figurar dos veces en la misma reserva (p.ej.

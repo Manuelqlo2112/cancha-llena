@@ -265,6 +265,7 @@ export type MiReserva = {
   complejo: { slug: string; nombre: string };
   solicitudAbiertaId: string | null;
   puedeBuscarRival: boolean;
+  puedeReportarResultado: boolean;
 };
 
 // Cuánto historial pasado se muestra — sin este límite, un jugador con
@@ -317,6 +318,7 @@ export async function obtenerMisReservas(usuarioId: string): Promise<MiReserva[]
         complejo: { slug: reserva.cancha!.complejo!.slug, nombre: reserva.cancha!.complejo!.nombre },
         solicitudAbiertaId: reserva.solicitudRival.find((s) => s.estado === "abierta")?.id ?? null,
         puedeBuscarRival: reserva.estado !== "cancelada" && reserva.fecha >= hoyISO && !tieneSolicitudAbierta && cuposFaltantes > 0,
+        puedeReportarResultado: reserva.estado !== "cancelada" && reserva.fecha <= hoyISO && !reserva.resultadoReportadoEn,
       };
     })
     .sort((a, b) => `${a.fecha}${a.horaInicio}`.localeCompare(`${b.fecha}${b.horaInicio}`));

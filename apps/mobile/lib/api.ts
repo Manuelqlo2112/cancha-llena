@@ -114,7 +114,22 @@ export type MiReserva = {
   complejo: { slug: string; nombre: string };
   solicitudAbiertaId: string | null;
   puedeBuscarRival: boolean;
+  puedeReportarResultado: boolean;
 };
+
+export type ParticipanteParaReportar = { usuarioId: string; nombre: string };
+
+export type ReservaParaReportar = {
+  id: string;
+  fecha: string;
+  horaInicio: string;
+  cancha: { nombre: string; deporte: string };
+  complejo: { nombre: string; slug: string };
+  participantes: ParticipanteParaReportar[];
+  yaReportado: boolean;
+};
+
+export type NivelJugador = { deporte: string; nivel: number };
 
 export type SolicitudAbierta = {
   id: string;
@@ -209,7 +224,7 @@ export const api = {
   unirseSolicitud: (solicitudId: string) =>
     request<{ ok: boolean; error?: string }>(`/api/solicitudes/${solicitudId}/unirse`, { method: "POST" }),
   listarSolicitudes: () => request<{ solicitudes: SolicitudAbierta[] }>("/api/solicitudes", { formaFija: true }),
-  misReservas: () => request<{ reservas: MiReserva[]; rachas: MiRacha[] }>("/api/reservas/mias", { requiereSesion: true, formaFija: true }),
+  misReservas: () => request<{ reservas: MiReserva[]; rachas: MiRacha[]; niveles: NivelJugador[] }>("/api/reservas/mias", { requiereSesion: true, formaFija: true }),
   cancelarReserva: (reservaId: string) => request<{ ok: boolean; error?: string }>(`/api/reservas/${reservaId}/cancelar`, { method: "POST" }),
   buscarRival: (reservaId: string) =>
     request<{ ok: boolean; solicitudId?: string; invitados?: number; error?: string }>(`/api/reservas/${reservaId}/buscar-rival`, { method: "POST" }),
@@ -219,4 +234,7 @@ export const api = {
     request<{ ok: boolean; unido?: boolean; error?: string }>(`/api/invitaciones/${invitacionId}/responder`, { method: "POST", body: { respuesta } }),
   inscribirseALiga: (ligaId: string) => request<{ ok: boolean; error?: string }>(`/api/ligas/${ligaId}/inscribirse`, { method: "POST" }),
   salirDeLiga: (ligaId: string) => request<{ ok: boolean; error?: string }>(`/api/ligas/${ligaId}/salir`, { method: "POST" }),
+  obtenerParticipantesReserva: (reservaId: string) => request<{ reserva: ReservaParaReportar }>(`/api/reservas/${reservaId}/participantes`, { formaFija: true }),
+  reportarResultado: (reservaId: string, equipoGanador: "A" | "B" | "empate", asignaciones: { usuarioId: string; equipo: "A" | "B" }[]) =>
+    request<{ ok: boolean; error?: string }>(`/api/reservas/${reservaId}/resultado`, { method: "POST", body: { equipoGanador, asignaciones } }),
 };

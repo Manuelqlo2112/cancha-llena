@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { getSessionUser } from "@/lib/session";
 import { obtenerMisRachas } from "@/lib/reservas";
+import { nivelesDeJugador } from "@/lib/resultados";
+import { DEPORTE_LABEL } from "@/lib/format";
 import { cerrarSesionUniversal } from "@/app/auth-actions";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +34,7 @@ export default async function PerfilPage() {
   const rachas = await obtenerMisRachas(session.id);
   const mejorRachaGlobal = rachas.reduce((max, r) => Math.max(max, r.mejorRacha), 0);
   const rachasActivas = rachas.filter((r) => r.vigente).length;
+  const niveles = nivelesDeJugador(session.nivelPorDeporte);
 
   return (
     <div className="mx-auto max-w-md">
@@ -65,6 +68,23 @@ export default async function PerfilPage() {
           </div>
         </Card>
       </div>
+
+      {niveles.length > 0 ? (
+        <div className="mb-6">
+          <h2 className="mb-2 text-sm font-medium">Tu nivel</h2>
+          <div className="flex flex-col gap-2">
+            {niveles.map((n) => (
+              <Card key={n.deporte} className="flex items-center justify-between py-2.5">
+                <span className="text-sm">{DEPORTE_LABEL[n.deporte] ?? n.deporte}</span>
+                <span className="text-sm font-medium">{n.nivel}</span>
+              </Card>
+            ))}
+          </div>
+          <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+            Sube o baja según el resultado que reportás en tus partidos.
+          </p>
+        </div>
+      ) : null}
 
       {rachas.length > 0 ? (
         <div className="mb-6">

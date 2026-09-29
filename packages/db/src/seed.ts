@@ -197,13 +197,21 @@ async function main() {
   // Piloto futbolito: el nivel de jugador solo se genera para los deportes que
   // de verdad se juegan en estos dos complejos.
   const DEPORTES = ["futbolito", "futbol"] as const;
+  // Escala ELO (arranca en 1000 — mismo valor que NIVEL_INICIAL en
+  // apps/web/lib/resultados.ts, la Fase 2 de ranking que terminó usando este
+  // mismo campo). Antes esto sembraba una escala 1-5 de "nivel autoreportado"
+  // que ningún código llegó a leer nunca (nivelMinimo/nivelMaximo de
+  // solicitudes_rival tampoco se usan para filtrar matchmaking todavía) — al
+  // implementar el ranking real, esos valores 1-5 se leían como si fueran
+  // ELO y el nivel mostrado en Perfil salía sin sentido (p. ej. "1.2").
+  const NIVEL_INICIAL_ELO = 1000;
   const jugadores = await db
     .insert(usuarios)
     .values(
       NOMBRES.map((nombre) => {
         const nivelPorDeporte: Record<string, number> = {};
         for (const d of DEPORTES) {
-          if (chance(0.6)) nivelPorDeporte[d] = Math.round((1 + rng() * 4) * 10) / 10;
+          if (chance(0.6)) nivelPorDeporte[d] = Math.round(NIVEL_INICIAL_ELO + (rng() - 0.5) * 400);
         }
         return {
           nombre,

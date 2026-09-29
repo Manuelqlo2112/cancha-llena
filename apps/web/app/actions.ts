@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { actualizarUbicacion, cancelarReserva, crearReserva, crearSolicitudRival, responderInvitacion, unirseSolicitud } from "@/lib/reservas";
 import { inscribirseALiga, salirDeLiga } from "@/lib/ligas";
+import { obtenerReservaParaReportar, reportarResultado } from "@/lib/resultados";
 import { getSessionUser } from "@/lib/session";
 
 export async function reservarCancha(formData: FormData) {
@@ -123,4 +124,28 @@ export async function salirDeLigaAction(formData: FormData) {
   const resultado = await salirDeLiga(session.id, ligaId);
   revalidatePath(`/complejos/${slug}`);
   redirect(`/complejos/${slug}${resultado.ok ? "?liga=salida" : `?error=${resultado.error}`}`);
+}
+
+export async function reportarResultadoAction(formData: FormData) {
+  const reservaId = String(formData.get("reservaId") ?? "");
+  const equipoGanadorRaw = String(formData.get("equipoGanador") ?? "");
+  const equipoGanador = equipoGanadorRaw === "A" || equipoGanadorRaw === "B" || equipoGanadorRaw === "empate" ? equipoGanadorRaw : null;
+
+  const session = await getSessionUser();
+  if (!session) redirect("/login?next=/mis-reservas");
+
+  // Se vuelve a pedir la lista de participantes acá (no se confía en una
+  // lista de ids que hubiera mandado el formulario) para saber qué campos
+  // "equipo_<id>" leer del formData.
+  const reserva = await obtenerReservaParaReportar(session.id, reservaId);
+  if (!reserva || !equipoGanador) redirect(`/mis-reservas/${reservaId}/resultado?error=datos_invalidos`);
+
+  const asignaciones = reserva.participantes.map((p) => {
+    const equipo = formData.get(`equipo_${p.usuarioId}`);
+    return { usuarioId: p.usuarioId, equipo: equipo === "B" ? ("B" as const) : ("A" as const) };
+  });
+
+  const resultado = await reportarResultado(session.id, reservaId, equipoGanador, asignaciones);
+  revalidatePath("/mis-reservas");
+  redirect(resultado.ok ? "/mis-reservas?resultado=1" : `/mis-reservas/${reservaId}/resultado?error=${resultado.error}`);
 }
