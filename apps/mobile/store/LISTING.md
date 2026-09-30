@@ -57,6 +57,19 @@ en camino.
   "No" en todas las categorías sensibles (violencia, contenido sexual,
   drogas, apuestas, lenguaje ofensivo).
 
+## Público objetivo (Target audience)
+
+- **Grupo de edad**: 18+ como principal (la app requiere reservar y pagar
+  un abono), pero el cuestionario de Google también deja marcar 13-17 si
+  querés incluir adolescentes que juegan futbolito — la política de
+  privacidad ya dice "pensada para mayores de 13 años".
+- **¿Atrae especialmente a chicos?** No — marcar que no.
+
+## Anuncios
+
+- **¿La app muestra anuncios?** No. Cancha Llena no tiene publicidad de
+  ningún tipo hoy.
+
 ## Política de privacidad (obligatorio, ya está lista)
 
 ```
