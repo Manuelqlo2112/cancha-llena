@@ -3,7 +3,7 @@
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { auth, signIn, signOut } from "@/auth";
-import { cambiarContrasena, registrarConCredenciales } from "@/lib/credenciales";
+import { cambiarContrasena, eliminarCuenta, registrarConCredenciales } from "@/lib/credenciales";
 import { clearDevSession, getSessionUser, setDevSessionUser } from "@/lib/session";
 import { devLoginHabilitado } from "@/lib/devAuth";
 
@@ -63,6 +63,31 @@ export async function cambiarContrasenaAction(formData: FormData) {
 
   const resultado = await cambiarContrasena(session.id, actual, nueva);
   redirect(resultado.ok ? "/perfil?contrasena=1" : `/perfil?error=${resultado.error}`);
+}
+
+export async function eliminarCuentaAction(formData: FormData) {
+  const session = await getSessionUser();
+  if (!session) redirect("/login?next=/eliminar-cuenta");
+
+  // Escribir la palabra a mano (no un simple checkbox) es la fricción
+  // mínima para que un click accidental no borre una cuenta de verdad —
+  // esto es irreversible.
+  const confirmacion = String(formData.get("confirmacion") ?? "");
+  if (confirmacion !== "ELIMINAR") redirect("/eliminar-cuenta?error=confirmacion_invalida");
+
+  const resultado = await eliminarCuenta(session.id);
+  if (!resultado.ok) redirect(`/eliminar-cuenta?error=${resultado.error}`);
+
+  // Mismo criterio que cerrarSesionUniversal: la cuenta ya no existe con
+  // datos reales, así que cerrar la sesión (la que corresponda) es parte
+  // del mismo trámite, no un paso aparte.
+  const sesionReal = await auth();
+  if (sesionReal) {
+    await signOut({ redirectTo: "/eliminar-cuenta?listo=1" });
+    return;
+  }
+  await clearDevSession();
+  redirect("/eliminar-cuenta?listo=1");
 }
 
 // Cierra la sesión que corresponda: la real de Auth.js si existe, si no la

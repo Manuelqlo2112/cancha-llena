@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { cambiarContrasena, registrarConCredenciales, verificarCredenciales } from "@/lib/credenciales";
-import { crearUsuarioFixture, resetDb } from "./helpers";
+import { eq } from "drizzle-orm";
+import { authAccounts, db, sesionesMovil, usuarios } from "@cancha-llena/db";
+import { cambiarContrasena, eliminarCuenta, registrarConCredenciales, verificarCredenciales } from "@/lib/credenciales";
+import { crearReserva } from "@/lib/reservas";
+import { crearCanchaFixture, crearComplejoFixture, crearUsuarioFixture, fechaRelativa, resetDb } from "./helpers";
 
 beforeEach(resetDb);
 
@@ -100,5 +103,65 @@ describe("cambiarContrasena", () => {
 
     const cambio = await cambiarContrasena(r.usuario.id, "supersecreta", "corta");
     expect(cambio).toEqual({ ok: false, error: "datos_invalidos" });
+  });
+});
+
+describe("eliminarCuenta", () => {
+  it("anonimiza nombre, email, contraseña, teléfono y ubicación de un jugador", async () => {
+    const r = await registrarConCredenciales("Ana Test", "ana@mail.cl", "supersecreta");
+    if (!r.ok) throw new Error("fixture");
+    await db.update(usuarios).set({ telefono: "+56911111111", ultimaLat: "-33.45", ultimaLng: "-70.65" }).where(eq(usuarios.id, r.usuario.id));
+
+    const resultado = await eliminarCuenta(r.usuario.id);
+    expect(resultado).toEqual({ ok: true });
+
+    const actualizado = await db.query.usuarios.findFirst({ where: { id: r.usuario.id } });
+    expect(actualizado?.nombre).toBe("Usuario eliminado");
+    expect(actualizado?.email).toBe(`eliminado-${r.usuario.id}@canchallena.invalid`);
+    expect(actualizado?.passwordHash).toBeNull();
+    expect(actualizado?.telefono).toBeNull();
+    expect(actualizado?.ultimaLat).toBeNull();
+    expect(actualizado?.ultimaLng).toBeNull();
+  });
+
+  it("borra sus cuentas OAuth y sesiones móviles", async () => {
+    const jugador = await crearUsuarioFixture();
+    await db.insert(authAccounts).values({ userId: jugador.id, type: "oauth", provider: "google", providerAccountId: "g-123" });
+    await db.insert(sesionesMovil).values({ token: "tok-abc", usuarioId: jugador.id, expiraEn: new Date(Date.now() + 86_400_000) });
+
+    await eliminarCuenta(jugador.id);
+
+    expect(await db.query.authAccounts.findFirst({ where: { userId: jugador.id } })).toBeUndefined();
+    expect(await db.query.sesionesMovil.findFirst({ where: { usuarioId: jugador.id } })).toBeUndefined();
+  });
+
+  it("conserva el historial de partidos, solo deja de identificar a la persona", async () => {
+    const complejo = await crearComplejoFixture();
+    const cancha = await crearCanchaFixture(complejo.id);
+    const jugador = await crearUsuarioFixture();
+    const reserva = await crearReserva(jugador.id, cancha.id, fechaRelativa(1), "19:00");
+    if (!reserva.ok) throw new Error("fixture");
+
+    await eliminarCuenta(jugador.id);
+
+    const reservaTrasEliminar = await db.query.reservas.findFirst({ where: { id: reserva.reservaId } });
+    expect(reservaTrasEliminar).not.toBeUndefined(); // la reserva sigue existiendo
+    expect(reservaTrasEliminar?.usuarioId).toBe(jugador.id); // el vínculo no se rompe, solo la fila de usuarios cambió
+  });
+
+  it("rechaza a un admin_complejo o super_admin (piden la baja a mano)", async () => {
+    const admin = await crearUsuarioFixture({ rol: "admin_complejo" });
+    const superAdmin = await crearUsuarioFixture({ rol: "super_admin" });
+
+    expect(await eliminarCuenta(admin.id)).toEqual({ ok: false, error: "sin_permiso" });
+    expect(await eliminarCuenta(superAdmin.id)).toEqual({ ok: false, error: "sin_permiso" });
+
+    // sin cambios
+    expect((await db.query.usuarios.findFirst({ where: { id: admin.id } }))?.nombre).toBe(admin.nombre);
+  });
+
+  it("rechaza un usuario que no existe", async () => {
+    const r = await eliminarCuenta("00000000-0000-0000-0000-000000000000");
+    expect(r).toEqual({ ok: false, error: "sin_permiso" });
   });
 });

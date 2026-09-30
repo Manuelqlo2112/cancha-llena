@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { db, usuarios } from "@cancha-llena/db";
+import { authAccounts, db, sesionesMovil, usuarios } from "@cancha-llena/db";
 import { esErrorPostgres } from "./dbErrors";
 
 // Lógica de email+contraseña compartida entre el Credentials provider de
@@ -72,5 +72,43 @@ export async function cambiarContrasena(usuarioId: string, actual: string, nueva
 
   const passwordHash = await bcrypt.hash(nueva, 10);
   await db.update(usuarios).set({ passwordHash }).where(eq(usuarios.id, usuarioId));
+  return { ok: true };
+}
+
+export type EliminarCuentaResult = { ok: true } | { ok: false; error: "sin_permiso" };
+
+// Google Play exige una URL de solicitud de borrado de cuenta (Data Safety),
+// y más allá de ese trámite, "eliminar mi cuenta" debería hacer algo de
+// verdad y no solo mandar un mail a esperar. Un DELETE duro de la fila no
+// es viable: reservas.usuarioId es NOT NULL y sin cascada — otros
+// participantes del mismo partido siguen necesitando esa fila para su
+// propio historial. En vez de eso, se anonimiza: el nombre y el email
+// dejan de identificar a la persona, se borra la contraseña y la última
+// ubicación, y se revocan todas sus sesiones (OAuth y móvil). El historial
+// de partidos sigue existiendo para los demás jugadores, pero ya no
+// apunta a ningún dato personal real.
+export async function eliminarCuenta(usuarioId: string): Promise<EliminarCuentaResult> {
+  const usuario = await db.query.usuarios.findFirst({ where: { id: usuarioId } });
+  if (!usuario) return { ok: false, error: "sin_permiso" };
+  // admin_complejo/super_admin administran complejos reales — autoeliminarse
+  // dejaría ese panel sin dueño. Esas cuentas piden la baja escribiendo a
+  // soporte (ver política de privacidad), no por autoservicio.
+  if (usuario.rol !== "jugador") return { ok: false, error: "sin_permiso" };
+
+  await db
+    .update(usuarios)
+    .set({
+      nombre: "Usuario eliminado",
+      email: `eliminado-${usuarioId}@canchallena.invalid`,
+      telefono: null,
+      passwordHash: null,
+      ultimaLat: null,
+      ultimaLng: null,
+      ultimaUbicacionEn: null,
+    })
+    .where(eq(usuarios.id, usuarioId));
+  await db.delete(authAccounts).where(eq(authAccounts.userId, usuarioId));
+  await db.delete(sesionesMovil).where(eq(sesionesMovil.usuarioId, usuarioId));
+
   return { ok: true };
 }

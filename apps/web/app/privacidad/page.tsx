@@ -64,7 +64,11 @@ export default function PrivacidadPage() {
 
       <Seccion titulo="Tus derechos">
         <p>
-          Podés pedirnos ver, corregir o eliminar tus datos, o eliminar tu cuenta por completo, escribiéndonos a{" "}
+          Podés eliminar tu cuenta y tus datos personales vos mismo, en cualquier momento, desde{" "}
+          <a href="/eliminar-cuenta" className="underline">
+            /eliminar-cuenta
+          </a>
+          . Para cualquier otro pedido (ver o corregir tus datos), escribinos a{" "}
           <a href={`mailto:${CONTACTO}`} className="underline">
             {CONTACTO}
           </a>

@@ -192,6 +192,12 @@ export default async function PerfilPage({
           </button>
         </form>
       </div>
+
+      <div className="mt-4 flex justify-center text-xs">
+        <Link href="/eliminar-cuenta" className="underline" style={{ color: "var(--text-muted)" }}>
+          Eliminar mi cuenta
+        </Link>
+      </div>
     </div>
   );
 }
