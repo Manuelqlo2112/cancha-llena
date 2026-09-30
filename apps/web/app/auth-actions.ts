@@ -73,7 +73,7 @@ export async function eliminarCuentaAction(formData: FormData) {
   // mínima para que un click accidental no borre una cuenta de verdad —
   // esto es irreversible.
   const confirmacion = String(formData.get("confirmacion") ?? "");
-  if (confirmacion !== "ELIMINAR") redirect("/eliminar-cuenta?error=confirmacion_invalida");
+  if (confirmacion.trim().toUpperCase() !== "ELIMINAR") redirect("/eliminar-cuenta?error=confirmacion_invalida");
 
   const resultado = await eliminarCuenta(session.id);
   if (!resultado.ok) redirect(`/eliminar-cuenta?error=${resultado.error}`);

@@ -8,7 +8,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const confirmacion = typeof body?.confirmacion === "string" ? body.confirmacion : "";
-  if (confirmacion !== "ELIMINAR") return NextResponse.json({ ok: false, error: "confirmacion_invalida" }, { status: 400 });
+  // trim+upper: el teclado del celular no garantiza mayúsculas en todos los
+  // IME (autoCapitalize es una sugerencia visual, no una transformación
+  // forzada), así que la comparación exacta rechazaba intentos válidos.
+  if (confirmacion.trim().toUpperCase() !== "ELIMINAR") return NextResponse.json({ ok: false, error: "confirmacion_invalida" }, { status: 400 });
 
   const resultado = await eliminarCuenta(usuario.id);
   return NextResponse.json(resultado, { status: resultado.ok ? 200 : 409 });

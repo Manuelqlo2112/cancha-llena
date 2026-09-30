@@ -172,8 +172,8 @@ export default function PerfilScreen() {
               style={styles.input}
             />
             <Pressable
-              disabled={eliminando || confirmacionTexto !== "ELIMINAR"}
-              style={[styles.modalBtn, { backgroundColor: "#d03b3b", marginTop: 12, opacity: eliminando || confirmacionTexto !== "ELIMINAR" ? 0.5 : 1 }]}
+              disabled={eliminando || confirmacionTexto.trim().toUpperCase() !== "ELIMINAR"}
+              style={[styles.modalBtn, { backgroundColor: "#d03b3b", marginTop: 12, opacity: eliminando || confirmacionTexto.trim().toUpperCase() !== "ELIMINAR" ? 0.5 : 1 }]}
               onPress={onConfirmarEliminar}
             >
               <Text style={styles.modalBtnText}>{eliminando ? "..." : "Eliminar mi cuenta"}</Text>
