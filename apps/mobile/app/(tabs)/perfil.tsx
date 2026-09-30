@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { api, type MiRacha, type NivelJugador, type RivalHistorial } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
@@ -14,6 +14,9 @@ export default function PerfilScreen() {
   const [niveles, setNiveles] = useState<NivelJugador[]>([]);
   const [rivales, setRivales] = useState<RivalHistorial[]>([]);
   const [errorRachas, setErrorRachas] = useState(false);
+  const [modalEliminarVisible, setModalEliminarVisible] = useState(false);
+  const [confirmacionTexto, setConfirmacionTexto] = useState("");
+  const [eliminando, setEliminando] = useState(false);
 
   const cargarRachas = useCallback(() => {
     if (!usuario) return;
@@ -31,6 +34,24 @@ export default function PerfilScreen() {
   }, [usuario]);
 
   useFocusEffect(cargarRachas);
+
+  async function onConfirmarEliminar() {
+    setEliminando(true);
+    try {
+      const r = await api.eliminarCuenta(confirmacionTexto);
+      if (!r.ok) {
+        Alert.alert("No se pudo eliminar", r.error === "sin_permiso" ? "Tu cuenta administra un complejo — escribinos para dar de baja este tipo de cuenta." : "Revisá que escribiste ELIMINAR tal cual.");
+        return;
+      }
+      setModalEliminarVisible(false);
+      cerrarSesion();
+      Alert.alert("Cuenta eliminada", "Borramos tus datos personales y cerramos tu sesión.");
+    } catch {
+      Alert.alert("No se pudo eliminar", "Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      setEliminando(false);
+    }
+  }
 
   if (!usuario) {
     return (
@@ -120,6 +141,49 @@ export default function PerfilScreen() {
       <Pressable style={styles.logoutBtn} onPress={() => cerrarSesion()}>
         <Text style={styles.logoutBtnText}>Salir</Text>
       </Pressable>
+
+      <Pressable
+        style={{ alignSelf: "center", marginTop: 8 }}
+        onPress={() => {
+          setConfirmacionTexto("");
+          setModalEliminarVisible(true);
+        }}
+      >
+        <Text style={{ color: colors.textMuted, fontSize: 12, textDecorationLine: "underline" }}>Eliminar mi cuenta</Text>
+      </Pressable>
+
+      <Modal visible={modalEliminarVisible} transparent animationType="fade" onRequestClose={() => setModalEliminarVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Eliminar tu cuenta</Text>
+            <Text style={[styles.muted, { textAlign: "center", marginTop: 8, marginBottom: 4 }]}>
+              Borramos tu nombre, email, contraseña y ubicación, y cerramos todas tus sesiones. Esto no se puede
+              deshacer.
+            </Text>
+            <Text style={[styles.muted, { textAlign: "center", marginBottom: 12 }]}>
+              Escribí ELIMINAR para confirmar.
+            </Text>
+            <TextInput
+              value={confirmacionTexto}
+              onChangeText={setConfirmacionTexto}
+              placeholder="ELIMINAR"
+              autoCapitalize="characters"
+              autoCorrect={false}
+              style={styles.input}
+            />
+            <Pressable
+              disabled={eliminando || confirmacionTexto !== "ELIMINAR"}
+              style={[styles.modalBtn, { backgroundColor: "#d03b3b", marginTop: 12, opacity: eliminando || confirmacionTexto !== "ELIMINAR" ? 0.5 : 1 }]}
+              onPress={onConfirmarEliminar}
+            >
+              <Text style={styles.modalBtnText}>{eliminando ? "..." : "Eliminar mi cuenta"}</Text>
+            </Pressable>
+            <Pressable style={[styles.modalBtn, { backgroundColor: colors.chartSurface, borderWidth: 1, borderColor: colors.gridline, marginTop: 8 }]} onPress={() => setModalEliminarVisible(false)}>
+              <Text style={[styles.modalBtnText, { color: colors.textPrimary }]}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -144,4 +208,11 @@ const styles = StyleSheet.create({
   rachaValor: { fontSize: 14, fontWeight: "700", color: colors.textPrimary },
   logoutBtn: { marginTop: 24, alignSelf: "center", paddingHorizontal: 20, paddingVertical: 10 },
   logoutBtnText: { color: "#d03b3b", fontWeight: "600", fontSize: 14 },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", padding: 24 },
+  modalCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 20, width: "100%", maxWidth: 360 },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, textAlign: "center" },
+  modalBtn: { borderRadius: 10, paddingVertical: 12, alignItems: "center" },
+  modalBtnText: { color: "white", fontWeight: "600", fontSize: 14 },
+  input: { borderWidth: 1, borderColor: colors.gridline, backgroundColor: colors.chartSurface, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.textPrimary, textAlign: "center" },
 });

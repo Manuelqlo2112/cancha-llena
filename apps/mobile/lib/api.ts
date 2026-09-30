@@ -237,6 +237,7 @@ export const api = {
   invitarRival: (solicitudId: string, rivalId: string) =>
     request<{ ok: boolean; error?: string }>(`/api/solicitudes/${solicitudId}/invitar`, { method: "POST", body: { rivalId } }),
   actualizarUbicacion: (lat: number, lng: number) => request<{ ok: boolean; error?: string }>("/api/ubicacion", { method: "POST", body: { lat, lng } }),
+  eliminarCuenta: (confirmacion: string) => request<{ ok: boolean; error?: string }>("/api/cuenta/eliminar", { method: "POST", body: { confirmacion } }),
   listarInvitaciones: () => request<{ invitaciones: InvitacionPendiente[] }>("/api/invitaciones", { requiereSesion: true, formaFija: true }),
   responderInvitacion: (invitacionId: string, respuesta: "aceptada" | "rechazada") =>
     request<{ ok: boolean; unido?: boolean; error?: string }>(`/api/invitaciones/${invitacionId}/responder`, { method: "POST", body: { respuesta } }),

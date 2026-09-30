@@ -63,6 +63,16 @@ en camino.
 https://web-ashy-one-28.vercel.app/privacidad
 ```
 
+## URL de solicitud de borrado de cuenta (obligatorio, ya está lista)
+
+Google pide esto como campo aparte de la política de privacidad — es una
+página real con un formulario de autoservicio (no solo texto explicando
+cómo pedirlo por mail):
+
+```
+https://web-ashy-one-28.vercel.app/eliminar-cuenta
+```
+
 ## Formulario de seguridad de datos (Data Safety)
 
 Google pide declarar, tipo por tipo, qué datos se recolectan y para qué.
@@ -80,8 +90,9 @@ esta tabla:
 Puntos clave para el formulario:
 - Todos los datos viajan cifrados en tránsito (HTTPS) → marcar "Sí" en esa
   pregunta.
-- El usuario puede pedir borrar su cuenta y sus datos (mail de contacto en
-  la política de privacidad) → marcar que existe un mecanismo de borrado.
+- El usuario puede eliminar su cuenta y sus datos él mismo, desde la app o
+  desde la URL de arriba → marcar que sí existe un mecanismo de borrado
+  in-app, y pegar esa misma URL en el campo "cuenta y borrado de datos".
 - Ningún dato se vende ni se usa para publicidad de terceros.
 - La ubicación es la única categoría "sensible" — remarcar que es
   opcional y que el usuario la activa explícitamente desde Perfil.
