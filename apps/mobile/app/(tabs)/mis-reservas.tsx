@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { api, SesionInvalidaError, type MiRacha, type MiReserva, type ReservaParaReportar, type RivalHistorial } from "@/lib/api";
+import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { API_BASE_URL, api, SesionInvalidaError, type MiRacha, type MiReserva, type ReservaParaReportar, type RivalHistorial } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
 import { formatCLP, formatHora } from "@/lib/format";
@@ -129,6 +129,15 @@ export default function MisReservasScreen() {
     }
   }
 
+  async function onCompartirResultado(reservaId: string) {
+    try {
+      await Share.share({ message: `Mirá el resultado de nuestro partido: ${API_BASE_URL}/partidos/${reservaId}/resultado` });
+    } catch {
+      // El usuario cerró el panel de compartir, o el sistema no pudo abrirlo
+      // — ninguno de los dos casos necesita avisarle nada.
+    }
+  }
+
   async function abrirReportar(reservaId: string) {
     setModalReservaId(reservaId);
     setModalCargando(true);
@@ -242,7 +251,7 @@ export default function MisReservasScreen() {
                 Abono pagado: {formatCLP(r.montoAbono)} de {formatCLP(r.montoTotal)}
               </Text>
             ) : null}
-            {(accionable && r.esOrganizador && r.estado !== "cancelada") || r.puedeReportarResultado ? (
+            {(accionable && r.esOrganizador && r.estado !== "cancelada") || r.puedeReportarResultado || r.tieneResultado ? (
               <View style={styles.actionsRow}>
                 {accionable && r.esOrganizador && r.estado !== "cancelada" ? (
                   <>
@@ -261,6 +270,11 @@ export default function MisReservasScreen() {
                 {r.puedeReportarResultado ? (
                   <Pressable style={[styles.actionBtn, { backgroundColor: colors.chartSurface, borderWidth: 1, borderColor: colors.gridline }]} onPress={() => abrirReportar(r.id)}>
                     <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>Reportar resultado</Text>
+                  </Pressable>
+                ) : null}
+                {r.tieneResultado ? (
+                  <Pressable style={[styles.actionBtn, { backgroundColor: colors.chartSurface, borderWidth: 1, borderColor: colors.gridline }]} onPress={() => onCompartirResultado(r.id)}>
+                    <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>Compartir resultado</Text>
                   </Pressable>
                 ) : null}
               </View>

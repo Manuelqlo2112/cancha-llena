@@ -115,6 +115,7 @@ export type MiReserva = {
   solicitudAbiertaId: string | null;
   puedeBuscarRival: boolean;
   puedeReportarResultado: boolean;
+  tieneResultado: boolean;
 };
 
 export type ParticipanteParaReportar = { usuarioId: string; nombre: string };

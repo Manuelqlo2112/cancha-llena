@@ -220,6 +220,11 @@ function ReservaRow({
               Reportar resultado
             </Link>
           ) : null}
+          {r.tieneResultado ? (
+            <Link href={`/partidos/${r.id}/resultado`} target="_blank" className="rounded-md px-3 py-1.5 text-xs font-medium" style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}>
+              Compartir resultado
+            </Link>
+          ) : null}
         </div>
       </div>
 

@@ -328,6 +328,7 @@ export type MiReserva = {
   solicitudAbiertaId: string | null;
   puedeBuscarRival: boolean;
   puedeReportarResultado: boolean;
+  tieneResultado: boolean;
 };
 
 // Cuánto historial pasado se muestra — sin este límite, un jugador con
@@ -381,6 +382,7 @@ export async function obtenerMisReservas(usuarioId: string): Promise<MiReserva[]
         solicitudAbiertaId: reserva.solicitudRival.find((s) => s.estado === "abierta")?.id ?? null,
         puedeBuscarRival: reserva.estado !== "cancelada" && reserva.fecha >= hoyISO && !tieneSolicitudAbierta && cuposFaltantes > 0,
         puedeReportarResultado: reserva.estado !== "cancelada" && reserva.fecha <= hoyISO && !reserva.resultadoReportadoEn,
+        tieneResultado: !!reserva.resultadoReportadoEn,
       };
     })
     .sort((a, b) => `${a.fecha}${a.horaInicio}`.localeCompare(`${b.fecha}${b.horaInicio}`));

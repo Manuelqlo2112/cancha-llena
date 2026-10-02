@@ -141,6 +141,50 @@ export async function reportarResultado(
   return { ok: true };
 }
 
+export type ResultadoPublico = {
+  fecha: string;
+  horaInicio: string;
+  cancha: { nombre: string; deporte: string };
+  complejo: { nombre: string; slug: string };
+  equipoGanador: "A" | "B" | "empate";
+  equipoA: string[];
+  equipoB: string[];
+};
+
+// Fase 3 (red, Sección 06 del doc de producto): "compartir resultados" es
+// el motor de adquisición que la app todavía no tenía — alguien comparte
+// el marcador fuera de la app (WhatsApp, redes) y quien lo recibe puede
+// verlo sin cuenta ni login. Página pública a propósito: el UUID de la
+// reserva no es adivinable, así que no hace falta autenticación para que
+// sea privado en la práctica — mismo criterio que una URL de Strava o
+// Google Docs "cualquiera con el link".
+export async function obtenerResultadoPublico(reservaId: string): Promise<ResultadoPublico | null> {
+  if (!esUuid(reservaId)) return null;
+
+  const reserva = await db.query.reservas.findFirst({
+    where: { id: reservaId },
+    with: {
+      cancha: { with: { complejo: true } },
+      participantes: { with: { usuario: { columns: { nombre: true } } } },
+    },
+  });
+  if (!reserva || !reserva.cancha || !reserva.cancha.complejo || !reserva.equipoGanador) return null;
+
+  const nombreDe = (p: (typeof reserva.participantes)[number]) => p.usuario?.nombre ?? p.nombreInvitado ?? "Invitado";
+  const equipoA = reserva.participantes.filter((p) => p.equipo === "A").map(nombreDe);
+  const equipoB = reserva.participantes.filter((p) => p.equipo === "B").map(nombreDe);
+
+  return {
+    fecha: reserva.fecha,
+    horaInicio: reserva.horaInicio,
+    cancha: { nombre: reserva.cancha.nombre, deporte: reserva.cancha.deporte },
+    complejo: { nombre: reserva.cancha.complejo.nombre, slug: reserva.cancha.complejo.slug },
+    equipoGanador: reserva.equipoGanador,
+    equipoA,
+    equipoB,
+  };
+}
+
 export type NivelJugador = { deporte: string; nivel: number };
 
 // Para mostrar "tu nivel" en Perfil — solo devuelve deportes en los que el

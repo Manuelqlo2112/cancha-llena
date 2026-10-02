@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, participantesReserva, reservas } from "@cancha-llena/db";
 import { crearReserva } from "@/lib/reservas";
-import { nivelesDeJugador, obtenerReservaParaReportar, obtenerRivales, reportarResultado } from "@/lib/resultados";
+import { nivelesDeJugador, obtenerReservaParaReportar, obtenerResultadoPublico, obtenerRivales, reportarResultado } from "@/lib/resultados";
 import { crearCanchaFixture, crearComplejoFixture, crearUsuarioFixture, fechaRelativa, resetDb } from "./helpers";
 
 beforeEach(resetDb);
@@ -232,6 +232,40 @@ describe("obtenerRivales", () => {
   it("devuelve vacío para alguien que nunca jugó", async () => {
     const jugador = await crearUsuarioFixture();
     expect(await obtenerRivales(jugador.id)).toEqual([]);
+  });
+});
+
+describe("obtenerResultadoPublico", () => {
+  it("devuelve los equipos y el ganador de un partido con resultado reportado", async () => {
+    const { reservaId, organizador } = await partidoJugadoFixture(4);
+    const rival = await crearUsuarioFixture();
+    await agregarParticipante(reservaId, rival.id);
+    await reportarResultado(organizador.id, reservaId, "A", [
+      { usuarioId: organizador.id, equipo: "A" },
+      { usuarioId: rival.id, equipo: "B" },
+    ]);
+
+    const r = await obtenerResultadoPublico(reservaId);
+    expect(r).toMatchObject({ equipoGanador: "A", equipoA: [organizador.nombre], equipoB: [rival.nombre] });
+  });
+
+  it("incluye a los invitados sin cuenta por su nombre", async () => {
+    const { reservaId, organizador } = await partidoJugadoFixture(4);
+    await db.insert(participantesReserva).values({ reservaId, nombreInvitado: "Invitado Sin Cuenta", confirmado: true, equipo: "B" });
+    await db.update(participantesReserva).set({ equipo: "A" }).where(eq(participantesReserva.usuarioId, organizador.id));
+    await db.update(reservas).set({ equipoGanador: "empate", resultadoReportadoPorId: organizador.id, resultadoReportadoEn: new Date() }).where(eq(reservas.id, reservaId));
+
+    const r = await obtenerResultadoPublico(reservaId);
+    expect(r?.equipoB).toEqual(["Invitado Sin Cuenta"]);
+  });
+
+  it("devuelve null si todavía no se reportó un resultado", async () => {
+    const { reservaId } = await partidoJugadoFixture(4);
+    expect(await obtenerResultadoPublico(reservaId)).toBeNull();
+  });
+
+  it("devuelve null para una reserva que no existe", async () => {
+    expect(await obtenerResultadoPublico("00000000-0000-0000-0000-000000000000")).toBeNull();
   });
 });
 
