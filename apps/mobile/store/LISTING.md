@@ -124,8 +124,8 @@ Esto lo tenés que hacer vos, no es algo que yo pueda hacer en tu nombre:
 5. Completar el cuestionario de clasificación de contenido y el
    formulario de seguridad de datos (tablas de arriba).
 6. Pegar la URL de política de privacidad.
-7. Subir el `.aab` que генera `eas build` (ver abajo) en la sección
-   "Producción" → "Crear versión nueva".
+7. Subir el `.aab` que ya está compilado (link más abajo en este chat) en
+   la sección "Producción" → "Crear versión nueva".
 8. Google pide 2 capturas de pantalla de teléfono como mínimo — se pueden
    sacar corriendo la app (`npx expo start`) en un emulador o en tu
    celular con Expo Go, o directo desde el build de preview.
