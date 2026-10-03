@@ -9,7 +9,7 @@ import { DEPORTE_LABEL, DIA_SEMANA_LABEL, formatCLP, formatHora } from "@/lib/fo
 import { calcularOcupacionPorCancha, VENTANA_DIAS } from "@/lib/occupancy";
 import { getSessionUser, puedeAdministrar } from "@/lib/session";
 import { obtenerImpactoGamificacion } from "@/lib/adminGestion";
-import { actualizarCanchaAction, actualizarComplejoAction, crearCanchaAction, crearLigaAction } from "@/app/admin/actions";
+import { actualizarCanchaAction, actualizarComplejoAction, crearCanchaAction, crearLigaAction, crearPlanAction } from "@/app/admin/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +99,10 @@ export default async function AdminComplejoPage({
     where: { complejoId: complejo.id },
     with: { cancha: { columns: { nombre: true } } },
     orderBy: { diaSemana: "asc" },
+  });
+  const planesDelComplejo = await db.query.planesMensuales.findMany({
+    where: { complejoId: complejo.id },
+    orderBy: { creadoEn: "asc" },
   });
 
   return (
@@ -434,6 +438,96 @@ export default async function AdminComplejoPage({
 
           <button type="submit" className="mt-1 self-start rounded-md px-4 py-2 text-sm font-medium" style={{ background: "var(--series-valle)", color: "white" }}>
             Crear liga
+          </button>
+        </form>
+      </Card>
+
+      <Card className="mt-6">
+        <h2 className="mb-1 font-medium">Planes mensuales</h2>
+        <p className="mb-4 text-sm" style={{ color: "var(--text-secondary)" }}>
+          Un bono de cupos reutilizables por mes, más barato que reservar suelto. Cubre horario normal entre semana
+          (ni horario valle, que ya tiene descuento por racha, ni fin de semana).
+        </p>
+
+        {planesDelComplejo.length > 0 ? (
+          <ul className="mb-4 flex flex-col gap-2">
+            {planesDelComplejo.map((plan) => (
+              <li
+                key={plan.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm"
+                style={{ background: "var(--chart-surface)" }}
+              >
+                <span>
+                  <span className="font-medium">{plan.nombre}</span>{" "}
+                  <span style={{ color: "var(--text-muted)" }}>
+                    · {DEPORTE_LABEL[plan.deporte] ?? plan.deporte} · {plan.cuposPorMes} cupos/mes · {formatCLP(Number(plan.precioMensual))}/mes
+                  </span>
+                </span>
+                {!plan.activo ? <span style={{ color: "var(--text-muted)" }}>Inactivo</span> : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <form action={crearPlanAction} className="flex flex-col gap-3">
+          <input type="hidden" name="complejoId" value={complejo.id} />
+          <input type="hidden" name="slug" value={slug} />
+
+          <div className="grid gap-3 sm:grid-cols-4">
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              Nombre
+              <input
+                type="text"
+                name="nombre"
+                placeholder="Plan mensual"
+                required
+                className="rounded-md border px-3 py-2 text-sm"
+                style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              Deporte
+              <select
+                name="deporte"
+                required
+                className="rounded-md border px-2 py-2 text-sm"
+                style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+              >
+                <option value="futbolito">Fútbolito</option>
+                <option value="futbol">Fútbol</option>
+                <option value="padel">Pádel</option>
+                <option value="tenis">Tenis</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              Cupos/mes
+              <input
+                type="number"
+                name="cuposPorMes"
+                min={1}
+                max={31}
+                defaultValue={4}
+                required
+                className="rounded-md border px-2 py-2 text-sm"
+                style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              Precio/mes
+              <input
+                type="number"
+                name="precioMensual"
+                min={1000}
+                step={1000}
+                required
+                className="rounded-md border px-2 py-2 text-sm"
+                style={{ borderColor: "var(--gridline)", background: "var(--chart-surface)" }}
+              />
+            </label>
+          </div>
+
+          <button type="submit" className="mt-1 self-start rounded-md px-4 py-2 text-sm font-medium" style={{ background: "var(--series-valle)", color: "white" }}>
+            Crear plan
           </button>
         </form>
       </Card>

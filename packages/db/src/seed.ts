@@ -140,7 +140,10 @@ async function main() {
         deporte: "futbolito" as const,
         nombre: `Cancha ${i + 1}`,
         capacidadJugadores: 14,
-        precioBase: "45000",
+        // Dato real (su propio sitio/lista de precios): 39.500 entre
+        // semana. Fin de semana cobran 30.000, pero el esquema todavía no
+        // tiene un precio distinto por día — queda como gap conocido.
+        precioBase: "39500",
       })),
     )
     .returning();
@@ -153,7 +156,8 @@ async function main() {
         deporte: "futbolito" as const,
         nombre: `Cancha ${i + 1}`,
         capacidadJugadores: 14,
-        precioBase: "50000",
+        // Dato real: 28.000 entre semana.
+        precioBase: "28000",
       })),
       {
         complejoId: miraflores!.id,

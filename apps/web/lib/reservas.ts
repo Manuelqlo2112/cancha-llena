@@ -3,6 +3,7 @@ import { db, pagos, participantesReserva, rachas, reservas, solicitudesRival, so
 import { esDiaLaboral, horaFinDe, SLOTS_PRIME, SLOTS_VALLE } from "@cancha-llena/db/slots";
 import { distanciaKm } from "@cancha-llena/db/geo";
 import { esErrorPostgres } from "./dbErrors";
+import { consumirCupoSiAplica } from "./planes";
 import { esFechaValida, esUuid } from "./validacion";
 
 // Radio dentro del cual se considera a un jugador "cerca de la cancha" para
@@ -31,7 +32,7 @@ export async function tieneDescuentoValle(usuarioId: string, complejoId: string)
 }
 
 export type CrearReservaResult =
-  | { ok: true; reservaId: string; descuentoAplicado: boolean }
+  | { ok: true; reservaId: string; descuentoAplicado: boolean; cubiertoPorPlan: boolean }
   | { ok: false; error: "cancha_no_existe" | "ocupado" | "fecha_pasada" | "datos_invalidos" };
 
 export async function crearReserva(usuarioId: string, canchaId: string, fecha: string, hora: string): Promise<CrearReservaResult> {
@@ -96,7 +97,15 @@ export async function crearReserva(usuarioId: string, canchaId: string, fecha: s
     throw err;
   }
 
-  if (montoAbono > 0) {
+  // Se intenta DESPUÉS del insert a propósito: si esto consumiera el cupo
+  // antes y el insert fallara por "ocupado" (23505), habría que devolver el
+  // cupo — y el peor caso de hacerlo después (la reserva ya existe, pero el
+  // consumo del cupo no llegó a correr) es que el jugador se quede con una
+  // reserva gratis esa vez, no que pierda un cupo sin nada a cambio.
+  const cubiertoPorPlan = await consumirCupoSiAplica(usuarioId, cancha.complejoId, cancha.deporte, fecha, hora);
+  if (cubiertoPorPlan) {
+    await db.update(reservas).set({ montoTotal: "0", montoAbono: "0" }).where(eq(reservas.id, reserva!.id));
+  } else if (montoAbono > 0) {
     // No hay pasarela real todavía (Sección 3 del doc técnico): se simula el
     // abono pagado al instante para poder probar el flujo completo.
     await db.insert(pagos).values({
@@ -112,7 +121,7 @@ export async function crearReserva(usuarioId: string, canchaId: string, fecha: s
   await db.insert(participantesReserva).values({ reservaId: reserva!.id, usuarioId, confirmado: true });
   await actualizarRacha(usuarioId, cancha.complejoId, fecha);
 
-  return { ok: true, reservaId: reserva!.id, descuentoAplicado };
+  return { ok: true, reservaId: reserva!.id, descuentoAplicado, cubiertoPorPlan };
 }
 
 export type UnirseResult = { ok: true } | { ok: false; error: "solicitud_cerrada" | "ya_unido" };

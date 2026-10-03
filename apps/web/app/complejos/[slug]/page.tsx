@@ -6,8 +6,9 @@ import { Badge } from "@/components/Badge";
 import { DEPORTE_LABEL, DIA_SEMANA_LABEL, formatCLP, formatHora } from "@/lib/format";
 import { getSessionUser } from "@/lib/session";
 import { tieneDescuentoValle } from "@/lib/reservas";
-import { reservarCancha, buscarRivalAction, inscribirseALigaAction, salirDeLigaAction } from "@/app/actions";
+import { reservarCancha, buscarRivalAction, inscribirseALigaAction, salirDeLigaAction, suscribirsePlanAction, cancelarSuscripcionPlanAction } from "@/app/actions";
 import { listarLigasDeComplejo } from "@/lib/ligas";
+import { listarPlanesDeComplejo } from "@/lib/planes";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,8 @@ const MENSAJES: Record<string, string> = {
   error_sin_cupo: "Esa liga ya está completa.",
   error_pausada: "Esa liga está pausada por ahora.",
   error_no_inscrito: "No estabas anotado en esa liga.",
+  error_ya_suscrito: "Ya estabas suscripto a ese plan.",
+  error_no_suscrito: "No estabas suscripto a ese plan.",
 };
 
 export default async function ComplejoPage({
@@ -34,7 +37,7 @@ export default async function ComplejoPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ dia?: string; reservado?: string; descuento?: string; solicitud?: string; error?: string; liga?: string }>;
+  searchParams: Promise<{ dia?: string; reservado?: string; descuento?: string; planUsado?: string; solicitud?: string; error?: string; liga?: string; plan?: string }>;
 }) {
   const { slug } = await params;
   const sp = await searchParams;
@@ -69,6 +72,7 @@ export default async function ComplejoPage({
 
   const mensajeError = sp.error ? MENSAJES[`error_${sp.error}`] : null;
   const ligas = await listarLigasDeComplejo(complejo.id, session?.id ?? null);
+  const planes = await listarPlanesDeComplejo(complejo.id, session?.id ?? null);
   const descuentoActivo = session ? await tieneDescuentoValle(session.id, complejo.id) : false;
 
   return (
@@ -185,6 +189,64 @@ export default async function ComplejoPage({
         </div>
       ) : null}
 
+      {sp.plan ? (
+        <div className="mb-6 rounded-lg px-4 py-2.5 text-sm" style={{ background: "var(--chart-surface)", color: "var(--text-secondary)", border: "1px solid var(--gridline)" }}>
+          {sp.plan === "cancelado" ? "Cancelaste tu plan mensual." : "¡Listo! Ya tenés el plan mensual activo."}
+        </div>
+      ) : null}
+
+      {planes.length > 0 ? (
+        <div className="mb-6">
+          <h2 className="mb-3 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            Planes mensuales
+          </h2>
+          <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+            Un bono de cupos reutilizables por mes, más barato que reservar suelto. Vale para horario normal entre
+            semana.
+          </p>
+          <div className="flex flex-col gap-3">
+            {planes.map((plan) => (
+              <Card key={plan.id}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{plan.nombre}</p>
+                    <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                      {DEPORTE_LABEL[plan.deporte] ?? plan.deporte} · {plan.cuposPorMes} cupos/mes · {formatCLP(plan.precioMensual)}/mes
+                    </p>
+                    {plan.suscrito ? (
+                      <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                        Usaste {plan.cuposUsadosMes}/{plan.cuposPorMes} este mes.
+                      </p>
+                    ) : null}
+                  </div>
+                  {!session ? (
+                    <a href={`/login?next=/complejos/${slug}`} className="rounded-md px-3 py-1.5 text-sm font-medium" style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}>
+                      Iniciá sesión
+                    </a>
+                  ) : plan.suscrito ? (
+                    <form action={cancelarSuscripcionPlanAction}>
+                      <input type="hidden" name="planId" value={plan.id} />
+                      <input type="hidden" name="slug" value={slug} />
+                      <button type="submit" className="rounded-md px-3 py-1.5 text-sm font-medium" style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}>
+                        Cancelar
+                      </button>
+                    </form>
+                  ) : (
+                    <form action={suscribirsePlanAction}>
+                      <input type="hidden" name="planId" value={plan.id} />
+                      <input type="hidden" name="slug" value={slug} />
+                      <button type="submit" className="rounded-md px-3 py-1.5 text-sm font-medium" style={{ background: "var(--series-prime)", color: "white" }}>
+                        Suscribirme
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* Se pregunta apenas se reserva, arriba de todo, en vez de una pantalla aparte */}
       {sp.reservado ? (
         <div
@@ -192,7 +254,10 @@ export default async function ComplejoPage({
           style={{ background: "color-mix(in srgb, var(--status-good) 12%, var(--chart-surface))", border: "1px solid var(--gridline)" }}
         >
           <div>
-            <p className="font-medium">¡Reserva confirmada!{sp.descuento ? " 🔥 Con 15% de descuento por tu racha." : ""}</p>
+            <p className="font-medium">
+              ¡Reserva confirmada!{sp.descuento ? " 🔥 Con 15% de descuento por tu racha." : ""}
+              {sp.planUsado ? " Cubierta por tu plan mensual." : ""}
+            </p>
             <p style={{ color: "var(--text-secondary)" }}>¿Tenés los equipos completos, o te faltan jugadores?</p>
           </div>
           <div className="flex items-center gap-2">

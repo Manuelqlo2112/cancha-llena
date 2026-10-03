@@ -9,10 +9,12 @@ import {
   ligas,
   pagos,
   participantesReserva,
+  planesMensuales,
   rachas,
   reservas,
   solicitudInvitaciones,
   solicitudesRival,
+  suscripcionesMensuales,
   usuarios,
 } from "@cancha-llena/db";
 
@@ -26,12 +28,24 @@ export async function resetDb() {
   await db.delete(rachas);
   await db.delete(ligaInscripciones);
   await db.delete(ligas);
+  await db.delete(suscripcionesMensuales);
+  await db.delete(planesMensuales);
   await db.delete(reservas);
   await db.delete(horariosValle);
   await db.delete(canchas);
   await db.delete(authAccounts);
   await db.delete(usuarios);
   await db.delete(complejos);
+}
+
+// Para los planes mensuales: consumirCupoSiAplica solo aplica en un día
+// laboral — fechaRelativa(1) puede caer en fin de semana según cuándo
+// corran los tests, así que esto sí garantiza un día de semana real.
+export function proximoDiaLaboral(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 export async function crearComplejoFixture(overrides: Partial<typeof complejos.$inferInsert> = {}) {

@@ -98,7 +98,17 @@ export type Liga = {
   inscrito: boolean;
 };
 
-export type ComplejoDetalle = ComplejoResumen & { canchas: CanchaDetalle[]; ligas: Liga[]; descuentoActivo: boolean };
+export type PlanMensual = {
+  id: string;
+  nombre: string;
+  deporte: string;
+  cuposPorMes: number;
+  precioMensual: number;
+  suscrito: boolean;
+  cuposUsadosMes: number;
+};
+
+export type ComplejoDetalle = ComplejoResumen & { canchas: CanchaDetalle[]; ligas: Liga[]; planes: PlanMensual[]; descuentoActivo: boolean };
 
 export type MiReserva = {
   id: string;
@@ -223,7 +233,10 @@ export const api = {
   listarComplejos: () => request<{ complejos: ComplejoResumen[] }>("/api/complejos", { formaFija: true }),
   obtenerComplejo: (slug: string) => request<{ complejo: ComplejoDetalle }>(`/api/complejos/${slug}`, { formaFija: true }),
   reservar: (canchaId: string, fecha: string, hora: string) =>
-    request<{ ok: boolean; reservaId?: string; descuentoAplicado?: boolean; error?: string }>("/api/reservas", { method: "POST", body: { canchaId, fecha, hora } }),
+    request<{ ok: boolean; reservaId?: string; descuentoAplicado?: boolean; cubiertoPorPlan?: boolean; error?: string }>("/api/reservas", {
+      method: "POST",
+      body: { canchaId, fecha, hora },
+    }),
   unirseSolicitud: (solicitudId: string) =>
     request<{ ok: boolean; error?: string }>(`/api/solicitudes/${solicitudId}/unirse`, { method: "POST" }),
   listarSolicitudes: () => request<{ solicitudes: SolicitudAbierta[] }>("/api/solicitudes", { formaFija: true }),
@@ -244,6 +257,8 @@ export const api = {
     request<{ ok: boolean; unido?: boolean; error?: string }>(`/api/invitaciones/${invitacionId}/responder`, { method: "POST", body: { respuesta } }),
   inscribirseALiga: (ligaId: string) => request<{ ok: boolean; error?: string }>(`/api/ligas/${ligaId}/inscribirse`, { method: "POST" }),
   salirDeLiga: (ligaId: string) => request<{ ok: boolean; error?: string }>(`/api/ligas/${ligaId}/salir`, { method: "POST" }),
+  suscribirsePlan: (planId: string) => request<{ ok: boolean; error?: string }>(`/api/planes/${planId}/suscribirse`, { method: "POST" }),
+  cancelarPlan: (planId: string) => request<{ ok: boolean; error?: string }>(`/api/planes/${planId}/cancelar`, { method: "POST" }),
   obtenerParticipantesReserva: (reservaId: string) => request<{ reserva: ReservaParaReportar }>(`/api/reservas/${reservaId}/participantes`, { formaFija: true }),
   reportarResultado: (reservaId: string, equipoGanador: "A" | "B" | "empate", asignaciones: { usuarioId: string; equipo: "A" | "B" }[]) =>
     request<{ ok: boolean; error?: string }>(`/api/reservas/${reservaId}/resultado`, { method: "POST", body: { equipoGanador, asignaciones } }),

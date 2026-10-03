@@ -1,6 +1,7 @@
 import { db } from "@cancha-llena/db";
 import { slotsDelDia } from "@cancha-llena/db/slots";
 import { listarLigasDeComplejo } from "@/lib/ligas";
+import { listarPlanesDeComplejo } from "@/lib/planes";
 import { tieneDescuentoValle } from "@/lib/reservas";
 
 // Arma la grilla de horarios (libres + ocupados) de un complejo para los
@@ -46,6 +47,7 @@ export async function getComplejoView(slug: string, usuarioId: string | null) {
   if (!complejo) return null;
 
   const ligas = await listarLigasDeComplejo(complejo.id, usuarioId);
+  const planes = await listarPlanesDeComplejo(complejo.id, usuarioId);
   const descuentoActivo = usuarioId ? await tieneDescuentoValle(usuarioId, complejo.id) : false;
 
   const canchas = complejo.canchas.map((cancha) => {
@@ -97,6 +99,7 @@ export async function getComplejoView(slug: string, usuarioId: string | null) {
     porcentajeAbono: Number(complejo.porcentajeAbono),
     canchas,
     ligas,
+    planes,
     descuentoActivo,
   };
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { actualizarUbicacion, cancelarReserva, crearReserva, crearSolicitudRival, invitarRivalDirecto, responderInvitacion, unirseSolicitud } from "@/lib/reservas";
 import { inscribirseALiga, salirDeLiga } from "@/lib/ligas";
+import { cancelarSuscripcion, suscribirse } from "@/lib/planes";
 import { obtenerReservaParaReportar, reportarResultado } from "@/lib/resultados";
 import { getSessionUser } from "@/lib/session";
 
@@ -23,7 +24,7 @@ export async function reservarCancha(formData: FormData) {
   revalidatePath(`/admin/${returnTo}`);
   // Se manda el id de la reserva (no solo "1") para poder ofrecer, ahí mismo,
   // "¿te faltan jugadores?" con esa reserva puntual.
-  redirect(`/complejos/${returnTo}?reservado=${resultado.reservaId}${resultado.descuentoAplicado ? "&descuento=1" : ""}`);
+  redirect(`/complejos/${returnTo}?reservado=${resultado.reservaId}${resultado.descuentoAplicado ? "&descuento=1" : ""}${resultado.cubiertoPorPlan ? "&planUsado=1" : ""}`);
 }
 
 export async function unirseComoRival(formData: FormData) {
@@ -137,6 +138,30 @@ export async function salirDeLigaAction(formData: FormData) {
   const resultado = await salirDeLiga(session.id, ligaId);
   revalidatePath(`/complejos/${slug}`);
   redirect(`/complejos/${slug}${resultado.ok ? "?liga=salida" : `?error=${resultado.error}`}`);
+}
+
+export async function suscribirsePlanAction(formData: FormData) {
+  const planId = String(formData.get("planId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+
+  const session = await getSessionUser();
+  if (!session) redirect(`/login?next=/complejos/${slug}`);
+
+  const resultado = await suscribirse(session.id, planId);
+  revalidatePath(`/complejos/${slug}`);
+  redirect(`/complejos/${slug}${resultado.ok ? "?plan=1" : `?error=${resultado.error}`}`);
+}
+
+export async function cancelarSuscripcionPlanAction(formData: FormData) {
+  const planId = String(formData.get("planId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+
+  const session = await getSessionUser();
+  if (!session) redirect(`/login?next=/complejos/${slug}`);
+
+  const resultado = await cancelarSuscripcion(session.id, planId);
+  revalidatePath(`/complejos/${slug}`);
+  redirect(`/complejos/${slug}${resultado.ok ? "?plan=cancelado" : `?error=${resultado.error}`}`);
 }
 
 export async function reportarResultadoAction(formData: FormData) {

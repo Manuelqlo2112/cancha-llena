@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { actualizarCancha, actualizarComplejo, crearCancha, crearComplejo } from "@/lib/adminGestion";
 import { crearLiga } from "@/lib/ligas";
+import { crearPlan } from "@/lib/planes";
 import { getSessionUser } from "@/lib/session";
 
 export async function actualizarComplejoAction(formData: FormData) {
@@ -104,6 +105,25 @@ export async function crearLigaAction(formData: FormData) {
     diaSemana: Number(formData.get("diaSemana") ?? -1),
     horaInicio: String(formData.get("horaInicio") ?? ""),
     cupoMaximo: Number(formData.get("cupoMaximo") ?? 0),
+  });
+
+  revalidatePath(`/admin/${slug}`);
+  revalidatePath(`/complejos/${slug}`);
+  redirect(`/admin/${slug}${resultado.ok ? "?guardado=1" : `?error=${resultado.error}`}`);
+}
+
+export async function crearPlanAction(formData: FormData) {
+  const complejoId = String(formData.get("complejoId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+
+  const session = await getSessionUser();
+  if (!session) redirect(`/login?next=/admin/${slug}`);
+
+  const resultado = await crearPlan(session, complejoId, {
+    deporte: String(formData.get("deporte") ?? ""),
+    nombre: String(formData.get("nombre") ?? "").trim(),
+    cuposPorMes: Number(formData.get("cuposPorMes") ?? 0),
+    precioMensual: Number(formData.get("precioMensual") ?? 0),
   });
 
   revalidatePath(`/admin/${slug}`);

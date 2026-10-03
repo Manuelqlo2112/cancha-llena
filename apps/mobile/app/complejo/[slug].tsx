@@ -20,7 +20,7 @@ function formatDiaChip(iso: string) {
 // Confirmación que se dispara justo después de reservar (no un botón aparte
 // en otra pantalla) — así se pregunta en el momento en que de verdad se sabe
 // si el equipo quedó completo o no.
-type PendingConfirm = { reservaId: string; canchaNombre: string; fecha: string; hora: string; descuentoAplicado: boolean };
+type PendingConfirm = { reservaId: string; canchaNombre: string; fecha: string; hora: string; descuentoAplicado: boolean; cubiertoPorPlan: boolean };
 
 export default function ComplejoScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -34,6 +34,7 @@ export default function ComplejoScreen() {
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
   const [ligaEnCurso, setLigaEnCurso] = useState<string | null>(null);
+  const [planEnCurso, setPlanEnCurso] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -79,7 +80,7 @@ export default function ComplejoScreen() {
       }
       await cargar();
       // En vez de un simple "listo", preguntamos ahí mismo si falta gente.
-      setPendingConfirm({ reservaId: r.reservaId, canchaNombre, fecha, hora, descuentoAplicado: !!r.descuentoAplicado });
+      setPendingConfirm({ reservaId: r.reservaId, canchaNombre, fecha, hora, descuentoAplicado: !!r.descuentoAplicado, cubiertoPorPlan: !!r.cubiertoPorPlan });
     } catch {
       // Sin este catch, un error de red acá quedaba como una promesa
       // rechazada sin atrapar: el botón se destrababa (por el finally) pero
@@ -136,6 +137,33 @@ export default function ComplejoScreen() {
       Alert.alert("No se pudo salir", "Revisá tu conexión e intentá de nuevo.");
     } finally {
       setLigaEnCurso(null);
+    }
+  }
+
+  async function onSuscribirsePlan(planId: string) {
+    if (!usuario) return router.push("/login");
+    setPlanEnCurso(planId);
+    try {
+      const r = await api.suscribirsePlan(planId);
+      if (!r.ok) Alert.alert("No se pudo suscribir", r.error === "ya_suscrito" ? "Ya estabas suscripto." : (r.error ?? ""));
+      await cargar();
+    } catch {
+      Alert.alert("No se pudo suscribir", "Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      setPlanEnCurso(null);
+    }
+  }
+
+  async function onCancelarPlan(planId: string) {
+    setPlanEnCurso(planId);
+    try {
+      const r = await api.cancelarPlan(planId);
+      if (!r.ok) Alert.alert("No se pudo cancelar", r.error ?? "");
+      await cargar();
+    } catch {
+      Alert.alert("No se pudo cancelar", "Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      setPlanEnCurso(null);
     }
   }
 
@@ -249,6 +277,39 @@ export default function ComplejoScreen() {
                 })}
               </View>
             ) : null}
+
+            {complejo.planes.length > 0 ? (
+              <View style={styles.ligasSection}>
+                <Text style={styles.ligasTitulo}>Planes mensuales</Text>
+                {complejo.planes.map((plan) => {
+                  const busy = planEnCurso === plan.id;
+                  return (
+                    <View key={plan.id} style={styles.ligaCard}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.ligaNombre}>{plan.nombre}</Text>
+                        <Text style={styles.muted}>
+                          {DEPORTE_LABEL[plan.deporte] ?? plan.deporte} · {plan.cuposPorMes} cupos/mes · {formatCLP(plan.precioMensual)}/mes
+                        </Text>
+                        {plan.suscrito ? (
+                          <Text style={[styles.muted, { marginTop: 2 }]}>
+                            Usaste {plan.cuposUsadosMes}/{plan.cuposPorMes} este mes
+                          </Text>
+                        ) : null}
+                      </View>
+                      {plan.suscrito ? (
+                        <Pressable disabled={busy} style={[styles.actionBtn, { backgroundColor: colors.chartSurface, borderWidth: 1, borderColor: colors.gridline }]} onPress={() => onCancelarPlan(plan.id)}>
+                          <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>{busy ? "..." : "Cancelar"}</Text>
+                        </Pressable>
+                      ) : (
+                        <Pressable disabled={busy} style={[styles.actionBtn, { backgroundColor: colors.seriesPrime }]} onPress={() => onSuscribirsePlan(plan.id)}>
+                          <Text style={{ color: "white", fontWeight: "600" }}>{busy ? "..." : "Suscribirme"}</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
           </View>
         }
         data={canchasConSlotsDelDia}
@@ -293,6 +354,7 @@ export default function ComplejoScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>¡Reserva confirmada!{pendingConfirm?.descuentoAplicado ? " 🔥" : ""}</Text>
             {pendingConfirm?.descuentoAplicado ? <Text style={[styles.muted, { textAlign: "center", color: colors.seriesPrime }]}>Con 15% de descuento por tu racha</Text> : null}
+            {pendingConfirm?.cubiertoPorPlan ? <Text style={[styles.muted, { textAlign: "center", color: colors.seriesPrime }]}>Cubierta por tu plan mensual</Text> : null}
             <Text style={styles.modalSubtitle}>
               {pendingConfirm?.canchaNombre} · {pendingConfirm && formatDiaChip(pendingConfirm.fecha).numero}/{pendingConfirm?.hora}
             </Text>

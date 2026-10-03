@@ -69,6 +69,11 @@ export const ligaEstadoEnum = pgEnum("liga_estado", [
   "pausada",
 ]);
 
+export const suscripcionEstadoEnum = pgEnum("suscripcion_estado", [
+  "activa",
+  "cancelada",
+]);
+
 export const equipoEnum = pgEnum("equipo", ["A", "B"]);
 
 export const equipoGanadorEnum = pgEnum("equipo_ganador", ["A", "B", "empate"]);
@@ -356,6 +361,48 @@ export const ligaInscripciones = pgTable(
   (table) => [uniqueIndex("liga_inscripciones_unico").on(table.ligaId, table.usuarioId)],
 );
 
+// Idea de Manuel (su experiencia es liderar pricing con modelos
+// predictivos en seguros de auto): un bono mensual de cupos reutilizables,
+// más barato que pagar cada reserva suelta — pensado para llenar el
+// "horario normal entre semana" (SLOTS_PRIME en un día laboral, ver
+// packages/db/src/slots.ts), que es distinto del horario valle (ya tiene
+// su propio descuento por racha) y del fin de semana (el esquema todavía
+// no guarda un precio distinto para eso — gap conocido, no este cambio).
+export const planesMensuales = pgTable("planes_mensuales", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  complejoId: uuid("complejo_id")
+    .notNull()
+    .references(() => complejos.id, { onDelete: "cascade" }),
+  deporte: deporteEnum("deporte").notNull(),
+  nombre: text("nombre").notNull(),
+  cuposPorMes: integer("cupos_por_mes").notNull(),
+  precioMensual: numeric("precio_mensual", { precision: 10, scale: 0 }).notNull(),
+  activo: boolean("activo").notNull().default(true),
+  creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const suscripcionesMensuales = pgTable(
+  "suscripciones_mensuales",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => planesMensuales.id, { onDelete: "cascade" }),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => usuarios.id, { onDelete: "cascade" }),
+    // "2026-10" — se resetea solo (lazy, sin cron) la primera vez que se
+    // intenta consumir un cupo en un mes distinto al guardado acá. Mismo
+    // criterio de materialización on-demand que asegurarProximaSesion en
+    // ligas.ts.
+    mesVigente: text("mes_vigente").notNull(),
+    cuposUsadosMes: integer("cupos_usados_mes").notNull().default(0),
+    estado: suscripcionEstadoEnum("estado").notNull().default("activa"),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("suscripciones_mensuales_unico").on(table.planId, table.usuarioId)],
+);
+
 export const rachas = pgTable("rachas", {
   id: uuid("id").primaryKey().defaultRandom(),
   usuarioId: uuid("usuario_id")
@@ -389,6 +436,8 @@ export const dbRelations = defineRelations(
     sesionesMovil,
     ligas,
     ligaInscripciones,
+    planesMensuales,
+    suscripcionesMensuales,
   },
   (r) => ({
     complejos: {
@@ -396,6 +445,7 @@ export const dbRelations = defineRelations(
       horariosValle: r.many.horariosValle(),
       rachas: r.many.rachas(),
       ligas: r.many.ligas(),
+      planesMensuales: r.many.planesMensuales(),
     },
     canchas: {
       complejo: r.one.complejos({ from: r.canchas.complejoId, to: r.complejos.id }),
@@ -422,6 +472,7 @@ export const dbRelations = defineRelations(
       rachas: r.many.rachas(),
       invitaciones: r.many.solicitudInvitaciones(),
       ligaInscripciones: r.many.ligaInscripciones(),
+      suscripcionesMensuales: r.many.suscripcionesMensuales(),
       complejoAdmin: r.one.complejos({ from: r.usuarios.complejoAdminId, to: r.complejos.id }),
     },
     pagos: {
@@ -450,6 +501,14 @@ export const dbRelations = defineRelations(
     ligaInscripciones: {
       liga: r.one.ligas({ from: r.ligaInscripciones.ligaId, to: r.ligas.id }),
       usuario: r.one.usuarios({ from: r.ligaInscripciones.usuarioId, to: r.usuarios.id }),
+    },
+    planesMensuales: {
+      complejo: r.one.complejos({ from: r.planesMensuales.complejoId, to: r.complejos.id }),
+      suscripciones: r.many.suscripcionesMensuales(),
+    },
+    suscripcionesMensuales: {
+      plan: r.one.planesMensuales({ from: r.suscripcionesMensuales.planId, to: r.planesMensuales.id }),
+      usuario: r.one.usuarios({ from: r.suscripcionesMensuales.usuarioId, to: r.usuarios.id }),
     },
   }),
 );

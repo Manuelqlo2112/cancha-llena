@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, rachas } from "@cancha-llena/db";
+import { crearPlan, suscribirse } from "@/lib/planes";
 import { actualizarUbicacion, crearReserva, tieneDescuentoValle } from "@/lib/reservas";
-import { crearCanchaFixture, crearComplejoFixture, crearUsuarioFixture, fechaRelativa, resetDb } from "./helpers";
+import { crearCanchaFixture, crearComplejoFixture, crearUsuarioFixture, fechaRelativa, proximoDiaLaboral, resetDb } from "./helpers";
 
 beforeEach(resetDb);
 
@@ -19,6 +20,25 @@ describe("crearReserva", () => {
     expect(reserva?.estado).toBe("confirmada");
     expect(reserva?.participantes).toHaveLength(1);
     expect(reserva?.participantes[0]?.usuarioId).toBe(jugador.id);
+  });
+
+  it("con un plan mensual activo, un horario normal entre semana sale en 0 y consume un cupo", async () => {
+    const complejo = await crearComplejoFixture({ requiereAbono: true, porcentajeAbono: "50.00" });
+    const cancha = await crearCanchaFixture(complejo.id, { precioBase: "39500" });
+    const admin = await crearUsuarioFixture({ rol: "admin_complejo", complejoAdminId: complejo.id });
+    const jugador = await crearUsuarioFixture();
+    const plan = await crearPlan(admin, complejo.id, { deporte: "futbolito", nombre: "Plan mensual", cuposPorMes: 4, precioMensual: 140000 });
+    if (!plan.ok) throw new Error("fixture");
+    await suscribirse(jugador.id, plan.planId);
+
+    const r = await crearReserva(jugador.id, cancha.id, proximoDiaLaboral(), "19:00");
+    expect(r).toMatchObject({ ok: true, cubiertoPorPlan: true });
+    if (!r.ok) return;
+
+    const reserva = await db.query.reservas.findFirst({ where: { id: r.reservaId }, with: { pagos: true } });
+    expect(Number(reserva?.montoTotal)).toBe(0);
+    expect(Number(reserva?.montoAbono)).toBe(0);
+    expect(reserva?.pagos).toHaveLength(0); // sin abono simulado: el plan ya "pagó"
   });
 
   it("rechaza un horario ya ocupado", async () => {
