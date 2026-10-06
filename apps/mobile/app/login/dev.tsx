@@ -27,14 +27,14 @@ export default function LoginDevScreen() {
       // real (ver /api/dev/login), igual que login/registro con contraseña.
       const r = await api.loginDev(jugador.id);
       if (!r.ok || !r.usuario || !r.token) {
-        Alert.alert("No se pudo entrar", "Intentá de nuevo.");
+        Alert.alert("No se pudo entrar", "Intenta de nuevo.");
         return;
       }
       iniciarSesion(r.usuario, r.token);
       if (router.canGoBack()) router.back();
       else router.replace("/");
     } catch {
-      Alert.alert("No se pudo entrar", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo entrar", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setEntrando(null);
     }
@@ -42,7 +42,7 @@ export default function LoginDevScreen() {
 
   return (
     <View style={styles.root}>
-      <Text style={styles.hint}>Solo para desarrollo — sin contraseña, elegís directamente con qué usuario sembrado entrar.</Text>
+      <Text style={styles.hint}>Solo para desarrollo — sin contraseña, eliges directamente con qué usuario sembrado entrar.</Text>
 
       {usuario ? (
         <Pressable style={[styles.card, { borderColor: colors.seriesPrime }]} onPress={() => cerrarSesion()}>

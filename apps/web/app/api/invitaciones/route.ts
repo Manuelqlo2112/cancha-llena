@@ -3,7 +3,7 @@ import { listarInvitacionesPendientes } from "@/lib/reservas";
 import { getUserFromRequest } from "@/lib/apiAuth";
 
 // Invitaciones puntuales por cercanía — distinto de /api/solicitudes (el
-// listado abierto que ve cualquiera). Necesita sesión: es "a vos te
+// listado abierto que ve cualquiera). Necesita sesión: es "a ti te
 // invitamos", no un listado público.
 export async function GET(req: NextRequest) {
   const usuario = await getUserFromRequest(req);

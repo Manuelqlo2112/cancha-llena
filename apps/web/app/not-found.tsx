@@ -6,7 +6,7 @@ export default function NotFound() {
       <span className="text-4xl">⚽</span>
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Esta cancha no existe</h1>
       <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-        La página que buscás no está, o el link cambió.
+        La página que buscas no está, o el link cambió.
       </p>
       <Link
         href="/"

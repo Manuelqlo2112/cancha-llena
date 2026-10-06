@@ -7,8 +7,8 @@ import { getSessionUser } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 const ERRORES: Record<string, string> = {
-  datos_invalidos: "Completá tu nombre, email y una contraseña de al menos 8 caracteres.",
-  email_en_uso: "Ya existe una cuenta con ese email — probá iniciar sesión.",
+  datos_invalidos: "Completa tu nombre, email y una contraseña de al menos 8 caracteres.",
+  email_en_uso: "Ya existe una cuenta con ese email — prueba iniciar sesión.",
 };
 
 export default async function RegistrarsePage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
@@ -67,7 +67,7 @@ export default async function RegistrarsePage({ searchParams }: { searchParams: 
       </Card>
 
       <p className="mt-4 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-        ¿Ya tenés cuenta?{" "}
+        ¿Ya tienes cuenta?{" "}
         <Link href="/login" className="underline">
           Iniciar sesión
         </Link>

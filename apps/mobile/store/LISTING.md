@@ -22,24 +22,24 @@ Cancha Llena es la forma más simple de reservar una cancha de futbolito y
 armar el partido — sin llamadas, sin grupos de WhatsApp perdidos.
 
 RESERVA EN SEGUNDOS
-Elegí el complejo, la cancha y el horario. Confirmás al toque, con abono
+Elige el complejo, la cancha y el horario. Confirmas al toque, con abono
 online cuando el complejo lo pide.
 
 ¿TE FALTA GENTE PARA EL PARTIDO?
 Con "Buscar rival" avisamos a jugadores cerca tuyo que hay cupos libres, y
-también podés desafiar directo a alguien con quien ya jugaste antes.
+también puedes desafiar directo a alguien con quien ya jugaste antes.
 
-SUBÍ DE NIVEL
-Cada resultado que reportás actualiza tu nivel por deporte (sistema tipo
+SUBE DE NIVEL
+Cada resultado que reportas actualiza tu nivel por deporte (sistema tipo
 ELO) y tu historial cabeza a cabeza contra cada rival — victorias,
 empates y derrotas.
 
 LIGAS SEMANALES
-Sumate a una liga recurrente en tu complejo y jugá el mismo horario todas
+Súmate a una liga recurrente en tu complejo y juega el mismo horario todas
 las semanas con el mismo grupo.
 
 RACHAS Y DESCUENTOS
-Jugá seguido en un complejo y desbloqueá descuento en los horarios de
+Juega seguido en un complejo y desbloquea descuento en los horarios de
 menor demanda mientras tu racha siga activa.
 
 Pensada para complejos de futbolito en Chile, con más deportes y ciudades
@@ -61,7 +61,7 @@ en camino.
 
 - **Grupo de edad**: 18+ como principal (la app requiere reservar y pagar
   un abono), pero el cuestionario de Google también deja marcar 13-17 si
-  querés incluir adolescentes que juegan futbolito — la política de
+  quieres incluir adolescentes que juegan futbolito — la política de
   privacidad ya dice "pensada para mayores de 13 años".
 - **¿Atrae especialmente a chicos?** No — marcar que no.
 
@@ -112,7 +112,7 @@ Puntos clave para el formulario:
 
 ## Cuenta de Google Play Developer
 
-Esto lo tenés que hacer vos, no es algo que yo pueda hacer en tu nombre:
+Esto lo tienes que hacer tú, no es algo que yo pueda hacer en tu nombre:
 
 1. Entrar a https://play.google.com/console/signup con tu cuenta de
    Google.

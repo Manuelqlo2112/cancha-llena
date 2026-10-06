@@ -15,10 +15,10 @@ export const dynamic = "force-dynamic";
 
 const MENSAJES: Record<string, string> = {
   guardado: "Cambios guardados.",
-  error_sin_permiso: "No tenés permiso para editar esto.",
+  error_sin_permiso: "No tienes permiso para editar esto.",
   error_no_encontrada: "Esa cancha ya no existe.",
   error_cancha_no_existe: "Esa cancha no existe en este complejo.",
-  error_datos_invalidos: "Revisá los datos ingresados en el formulario.",
+  error_datos_invalidos: "Revisa los datos ingresados en el formulario.",
 };
 
 export default async function AdminComplejoPage({

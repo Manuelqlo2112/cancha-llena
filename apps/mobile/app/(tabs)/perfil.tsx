@@ -40,14 +40,14 @@ export default function PerfilScreen() {
     try {
       const r = await api.eliminarCuenta(confirmacionTexto);
       if (!r.ok) {
-        Alert.alert("No se pudo eliminar", r.error === "sin_permiso" ? "Tu cuenta administra un complejo — escribinos para dar de baja este tipo de cuenta." : "Revisá que escribiste ELIMINAR tal cual.");
+        Alert.alert("No se pudo eliminar", r.error === "sin_permiso" ? "Tu cuenta administra un complejo — escríbenos para dar de baja este tipo de cuenta." : "Revisa que escribiste ELIMINAR tal cual.");
         return;
       }
       setModalEliminarVisible(false);
       cerrarSesion();
       Alert.alert("Cuenta eliminada", "Borramos tus datos personales y cerramos tu sesión.");
     } catch {
-      Alert.alert("No se pudo eliminar", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo eliminar", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setEliminando(false);
     }
@@ -56,7 +56,7 @@ export default function PerfilScreen() {
   if (!usuario) {
     return (
       <View style={styles.center}>
-        <Text style={styles.muted}>Iniciá sesión para ver tu perfil.</Text>
+        <Text style={styles.muted}>Inicia sesión para ver tu perfil.</Text>
         <Pressable onPress={() => router.push("/login")} style={[styles.primaryBtn, { marginTop: 12 }]}>
           <Text style={styles.primaryBtnText}>Iniciar sesión</Text>
         </Pressable>
@@ -90,7 +90,7 @@ export default function PerfilScreen() {
 
       {errorRachas ? (
         <Pressable onPress={cargarRachas} style={{ alignItems: "center", marginTop: 16 }}>
-          <Text style={[styles.muted, { textDecorationLine: "underline" }]}>No se pudo cargar tu racha — tocá para reintentar</Text>
+          <Text style={[styles.muted, { textDecorationLine: "underline" }]}>No se pudo cargar tu racha — toca para reintentar</Text>
         </Pressable>
       ) : !rachas ? (
         <ActivityIndicator style={{ marginTop: 16 }} />
@@ -105,7 +105,7 @@ export default function PerfilScreen() {
               <Text style={styles.rachaValor}>{n.nivel}</Text>
             </View>
           ))}
-          <Text style={[styles.muted, { marginTop: -2, marginBottom: 8 }]}>Sube o baja según el resultado que reportás en tus partidos.</Text>
+          <Text style={[styles.muted, { marginTop: -2, marginBottom: 8 }]}>Sube o baja según el resultado que reportas en tus partidos.</Text>
         </View>
       ) : null}
 
@@ -161,7 +161,7 @@ export default function PerfilScreen() {
               deshacer.
             </Text>
             <Text style={[styles.muted, { textAlign: "center", marginBottom: 12 }]}>
-              Escribí ELIMINAR para confirmar.
+              Escribe ELIMINAR para confirmar.
             </Text>
             <TextInput
               value={confirmacionTexto}

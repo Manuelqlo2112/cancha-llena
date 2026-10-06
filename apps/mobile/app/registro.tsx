@@ -6,8 +6,8 @@ import { useSession } from "@/lib/session";
 import { colors } from "@/lib/theme";
 
 const ERRORES: Record<string, string> = {
-  datos_invalidos: "Completá tu nombre, email y una contraseña de al menos 8 caracteres.",
-  email_en_uso: "Ya existe una cuenta con ese email — probá iniciar sesión.",
+  datos_invalidos: "Completa tu nombre, email y una contraseña de al menos 8 caracteres.",
+  email_en_uso: "Ya existe una cuenta con ese email — prueba iniciar sesión.",
 };
 
 export default function RegistroScreen() {
@@ -32,7 +32,7 @@ export default function RegistroScreen() {
       if (router.canGoBack()) router.back();
       else router.replace("/");
     } catch {
-      setError("No se pudo conectar — revisá tu conexión e intentá de nuevo.");
+      setError("No se pudo conectar — revisa tu conexión e intenta de nuevo.");
     } finally {
       setCargando(false);
     }
@@ -69,7 +69,7 @@ export default function RegistroScreen() {
       </Pressable>
 
       <Link href="/login" style={styles.link}>
-        ¿Ya tenés cuenta? Iniciar sesión
+        ¿Ya tienes cuenta? Iniciar sesión
       </Link>
     </View>
   );

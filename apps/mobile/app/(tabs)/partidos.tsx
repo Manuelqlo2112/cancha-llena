@@ -69,7 +69,7 @@ export default function PartidosScreen() {
     try {
       const res = await pedirUbicacionActual();
       if (!res.ok) {
-        Alert.alert("No pudimos activarla", res.motivo === "permiso_denegado" ? "Necesitamos permiso de ubicación para avisarte de partidos cerca." : "Intentá de nuevo en un rato.");
+        Alert.alert("No pudimos activarla", res.motivo === "permiso_denegado" ? "Necesitamos permiso de ubicación para avisarte de partidos cerca." : "Intenta de nuevo en un rato.");
         return;
       }
       await api.actualizarUbicacion(res.lat, res.lng);
@@ -77,7 +77,7 @@ export default function PartidosScreen() {
       Alert.alert("Listo", "Te vamos a avisar de partidos cerca tuyo.");
       await cargar();
     } catch {
-      Alert.alert("No se pudo activar", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo activar", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setPidiendoUbicacion(false);
     }
@@ -94,7 +94,7 @@ export default function PartidosScreen() {
         await cargar();
       }
     } catch {
-      Alert.alert("No se pudo unir", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo unir", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setEnCurso(null);
     }
@@ -109,7 +109,7 @@ export default function PartidosScreen() {
       else Alert.alert(respuesta === "aceptada" ? "¡Listo!" : "Avisado", respuesta === "aceptada" ? "Te anotaste en el partido." : "Avisamos que no vas.");
       await cargar();
     } catch {
-      Alert.alert("No se pudo", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setEnCurso(null);
     }
@@ -123,11 +123,11 @@ export default function PartidosScreen() {
       ListHeaderComponent={
         <View style={{ marginBottom: 4 }}>
           <Text style={styles.title}>Partidos que buscan jugadores</Text>
-          <Text style={styles.muted}>Sumate a un partido ya reservado al que le falta gente.</Text>
+          <Text style={styles.muted}>Súmate a un partido ya reservado al que le falta gente.</Text>
 
           {usuario && !ubicacionActiva ? (
             <Pressable disabled={pidiendoUbicacion} style={styles.ubicacionBanner} onPress={onActivarUbicacion}>
-              <Text style={styles.ubicacionText}>📍 Activá tu ubicación para que te avisemos de partidos cerca</Text>
+              <Text style={styles.ubicacionText}>📍 Activa tu ubicación para que te avisemos de partidos cerca</Text>
               <Text style={styles.ubicacionCta}>{pidiendoUbicacion ? "..." : "Activar"}</Text>
             </Pressable>
           ) : null}
@@ -169,7 +169,7 @@ export default function PartidosScreen() {
       ListEmptyComponent={
         errorCarga ? (
           <View style={styles.center}>
-            <Text style={styles.muted}>No pudimos cargar los partidos — deslizá hacia abajo para reintentar.</Text>
+            <Text style={styles.muted}>No pudimos cargar los partidos — desliza hacia abajo para reintentar.</Text>
           </View>
         ) : !solicitudes ? (
           <ActivityIndicator style={{ marginVertical: 24 }} />

@@ -55,7 +55,7 @@ export default async function MisReservasPage({
         <h1 className="text-2xl font-semibold tracking-tight">Mis reservas</h1>
         <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
           <Link href="/login?next=/mis-reservas" className="underline">
-            Iniciá sesión
+            Inicia sesión
           </Link>{" "}
           para ver tus reservas.
         </p>
@@ -121,7 +121,7 @@ export default async function MisReservasPage({
         <h2 className="mb-3 font-medium">Próximas</h2>
         {proximas.length === 0 ? (
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            Todavía no tenés partidos agendados —{" "}
+            Todavía no tienes partidos agendados —{" "}
             <Link href="/" className="underline">
               explorá los complejos
             </Link>

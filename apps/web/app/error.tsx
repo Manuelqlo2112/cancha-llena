@@ -6,7 +6,7 @@ export default function ErrorPage({ reset }: { error: Error & { digest?: string 
       <span className="text-4xl">⚠️</span>
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Algo salió mal</h1>
       <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-        Probá de nuevo — si sigue pasando, contanos qué estabas haciendo.
+        Prueba de nuevo — si sigue pasando, cuéntanos qué estabas haciendo.
       </p>
       <button
         onClick={() => reset()}

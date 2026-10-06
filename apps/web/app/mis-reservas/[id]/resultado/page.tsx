@@ -9,10 +9,10 @@ import { reportarResultadoAction } from "@/app/actions";
 export const dynamic = "force-dynamic";
 
 const MENSAJES: Record<string, string> = {
-  error_datos_invalidos: "Asigná al menos un jugador a cada equipo.",
+  error_datos_invalidos: "Asigna al menos un jugador a cada equipo.",
   error_ya_reportado: "Ese resultado ya se había reportado.",
   error_partido_no_jugado: "Ese partido todavía no se jugó.",
-  error_sin_permiso: "No podés reportar el resultado de ese partido.",
+  error_sin_permiso: "No puedes reportar el resultado de ese partido.",
 };
 
 export default async function ReportarResultadoPage({
@@ -31,7 +31,7 @@ export default async function ReportarResultadoPage({
         <h1 className="text-2xl font-semibold tracking-tight">Reportar resultado</h1>
         <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
           <Link href={`/login?next=/mis-reservas/${id}/resultado`} className="underline">
-            Iniciá sesión
+            Inicia sesión
           </Link>{" "}
           para reportar el resultado.
         </p>

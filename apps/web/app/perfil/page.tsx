@@ -37,7 +37,7 @@ export default async function PerfilPage({
         <h1 className="text-2xl font-semibold tracking-tight">Perfil</h1>
         <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
           <Link href="/login?next=/perfil" className="underline">
-            Iniciá sesión
+            Inicia sesión
           </Link>{" "}
           para ver tu perfil.
         </p>
@@ -168,7 +168,7 @@ export default async function PerfilPage({
             <input
               type="password"
               name="confirmacion"
-              placeholder="Repetí la contraseña nueva"
+              placeholder="Repite la contraseña nueva"
               required
               minLength={8}
               autoComplete="new-password"

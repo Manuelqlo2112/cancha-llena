@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const ERRORES: Record<string, string> = {
   credenciales_invalidas: "Email o contraseña incorrectos.",
-  cuenta_creada_reintentar: "Tu cuenta se creó, pero hubo un problema al entrar — probá de nuevo.",
+  cuenta_creada_reintentar: "Tu cuenta se creó, pero hubo un problema al entrar — prueba de nuevo.",
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
@@ -81,14 +81,14 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </Card>
 
       <p className="mt-4 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-        ¿No tenés cuenta?{" "}
+        ¿No tienes cuenta?{" "}
         <Link href="/registrarse" className="underline">
           Crear cuenta
         </Link>
       </p>
       {devLoginHabilitado() ? (
         <p className="mt-6 text-center text-xs" style={{ color: "var(--text-muted)" }}>
-          ¿Sos del equipo?{" "}
+          ¿Eres del equipo?{" "}
           <Link href="/login/dev" className="underline">
             Entrar como usuario de prueba
           </Link>

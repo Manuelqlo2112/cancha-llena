@@ -28,7 +28,7 @@ export function ActivarUbicacionButton() {
 
   return (
     <div className="mb-6 flex flex-wrap items-center gap-2 rounded-lg px-4 py-2.5 text-sm" style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}>
-      <span style={{ color: "var(--text-secondary)" }}>Activá tu ubicación para que te avisemos de partidos cerca tuyo.</span>
+      <span style={{ color: "var(--text-secondary)" }}>Activa tu ubicación para que te avisemos de partidos cerca tuyo.</span>
       <button
         type="button"
         onClick={onClick}

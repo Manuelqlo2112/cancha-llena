@@ -52,12 +52,12 @@ export default function MisReservasScreen() {
       setErrorCarga(false);
     } catch (e) {
       // Sesión inválida: lib/session.tsx ya la cerró sola (el usuario va a
-      // ver la pantalla de "iniciá sesión" apenas cambie ese estado). Otros
+      // ver la pantalla de "inicia sesión" apenas cambie ese estado). Otros
       // errores de red sí los mostramos, y dejan de mostrar el spinner de
       // "vacio" girando para siempre (antes se quedaba así hasta que se
       // hiciera pull-to-refresh, sin ninguna pista de que había fallado).
       if (!(e instanceof SesionInvalidaError)) {
-        Alert.alert("No se pudo cargar", "Revisá tu conexión e intentá de nuevo.");
+        Alert.alert("No se pudo cargar", "Revisa tu conexión e intenta de nuevo.");
         setErrorCarga(true);
       }
     } finally {
@@ -74,7 +74,7 @@ export default function MisReservasScreen() {
   if (!usuario) {
     return (
       <View style={styles.center}>
-        <Text style={styles.muted}>Iniciá sesión para ver tus reservas.</Text>
+        <Text style={styles.muted}>Inicia sesión para ver tus reservas.</Text>
         <Pressable onPress={() => router.push("/login")} style={[styles.actionBtn, { backgroundColor: colors.seriesValle, marginTop: 12 }]}>
           <Text style={styles.actionBtnText}>Iniciar sesión</Text>
         </Pressable>
@@ -93,7 +93,7 @@ export default function MisReservasScreen() {
         await cargar();
       }
     } catch {
-      Alert.alert("No se pudo cancelar", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo cancelar", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setEnCurso(null);
     }
@@ -110,7 +110,7 @@ export default function MisReservasScreen() {
         await cargar();
       }
     } catch {
-      Alert.alert("No se pudo", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setEnCurso(null);
     }
@@ -123,7 +123,7 @@ export default function MisReservasScreen() {
       if (!r.ok) Alert.alert("No se pudo invitar", r.error ?? "");
       else Alert.alert("Listo", `Le mandamos la invitación a ${rivalNombre}.`);
     } catch {
-      Alert.alert("No se pudo invitar", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo invitar", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setEnCurso(null);
     }
@@ -131,7 +131,7 @@ export default function MisReservasScreen() {
 
   async function onCompartirResultado(reservaId: string) {
     try {
-      await Share.share({ message: `Mirá el resultado de nuestro partido: ${API_BASE_URL}/partidos/${reservaId}/resultado` });
+      await Share.share({ message: `Mira el resultado de nuestro partido: ${API_BASE_URL}/partidos/${reservaId}/resultado` });
     } catch {
       // El usuario cerró el panel de compartir, o el sistema no pudo abrirlo
       // — ninguno de los dos casos necesita avisarle nada.
@@ -148,7 +148,7 @@ export default function MisReservasScreen() {
       setModalData(reserva);
       setModalEquipos(Object.fromEntries(reserva.participantes.map((p) => [p.usuarioId, "A" as const])));
     } catch {
-      Alert.alert("No se pudo cargar", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo cargar", "Revisa tu conexión e intenta de nuevo.");
       setModalReservaId(null);
     } finally {
       setModalCargando(false);
@@ -169,7 +169,7 @@ export default function MisReservasScreen() {
       Alert.alert("Listo", "Resultado reportado — el nivel se actualizó.");
       await cargar();
     } catch {
-      Alert.alert("No se pudo reportar", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo reportar", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setModalEnviando(false);
     }
@@ -226,9 +226,9 @@ export default function MisReservasScreen() {
         if (item.tipo === "header") return <Text style={styles.sectionTitle}>Próximas</Text>;
         if (item.tipo === "historial-header") return <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Historial</Text>;
         if (item.tipo === "vacio") {
-          if (errorCarga) return <Text style={styles.muted}>No pudimos cargar tus reservas — deslizá hacia abajo para reintentar.</Text>;
+          if (errorCarga) return <Text style={styles.muted}>No pudimos cargar tus reservas — desliza hacia abajo para reintentar.</Text>;
           if (!reservas) return <ActivityIndicator style={{ marginVertical: 24 }} />;
-          return <Text style={styles.muted}>Todavía no tenés partidos agendados.</Text>;
+          return <Text style={styles.muted}>Todavía no tienes partidos agendados.</Text>;
         }
 
         const { r, accionable } = item;

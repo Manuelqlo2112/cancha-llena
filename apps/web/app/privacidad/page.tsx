@@ -1,4 +1,4 @@
-const ACTUALIZADO = "26 de septiembre de 2026";
+const ACTUALIZADO = "6 de octubre de 2026";
 const CONTACTO = "rodriguez.manuel.c17@gmail.com";
 
 function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
@@ -23,23 +23,23 @@ export default function PrivacidadPage() {
       <Seccion titulo="Qué es Cancha Llena">
         <p>
           Cancha Llena es una app para reservar canchas de fútbolito y coordinar partidos con otros jugadores. Esta
-          política explica qué datos recolectamos, para qué los usamos y qué control tenés sobre ellos.
+          política explica qué datos recolectamos, para qué los usamos y qué control tienes sobre ellos.
         </p>
       </Seccion>
 
       <Seccion titulo="Qué datos recolectamos">
         <p>
-          <strong>Cuenta:</strong> nombre, email y, si te registrás con contraseña, un hash de tu contraseña (nunca la
-          guardamos en texto plano). Si entrás con Google o Microsoft, recibimos tu nombre y email desde ese
+          <strong>Cuenta:</strong> nombre, email y, si te registras con contraseña, un hash de tu contraseña (nunca la
+          guardamos en texto plano). Si entras con Google o Microsoft, recibimos tu nombre y email desde ese
           proveedor.
         </p>
         <p>
-          <strong>Reservas:</strong> qué canchas reservás, cuándo, con quién jugás y el estado de tus pagos.
+          <strong>Reservas:</strong> qué canchas reservas, cuándo, con quién juegas y el estado de tus pagos.
         </p>
         <p>
-          <strong>Ubicación (opcional):</strong> si activás "avisame de partidos cerca mío", guardamos tu última
-          ubicación conocida para poder invitarte a partidos cercanos que buscan jugadores. Podés desactivar esto en
-          cualquier momento; no rastreamos tu ubicación en segundo plano.
+          <strong>Ubicación (opcional):</strong> si activas tu ubicación para que te avisemos de partidos cerca tuyo,
+          guardamos tu última ubicación conocida para poder invitarte a partidos cercanos que buscan jugadores. Puedes
+          desactivar esto en cualquier momento; no rastreamos tu ubicación en segundo plano.
         </p>
         <p>
           <strong>Uso de la app:</strong> información técnica básica (tipo de dispositivo, errores) para poder
@@ -56,19 +56,19 @@ export default function PrivacidadPage() {
 
       <Seccion titulo="Con quién compartimos datos">
         <p>
-          Con el complejo deportivo donde reservás (necesita saber quién reservó). Con nuestro proveedor de
+          Con el complejo deportivo donde reservas (necesita saber quién reservó). Con nuestro proveedor de
           infraestructura (hosting y base de datos) para poder operar la app. Con Google o Microsoft únicamente si
-          elegís iniciar sesión con esas cuentas.
+          eliges iniciar sesión con esas cuentas.
         </p>
       </Seccion>
 
       <Seccion titulo="Tus derechos">
         <p>
-          Podés eliminar tu cuenta y tus datos personales vos mismo, en cualquier momento, desde{" "}
+          Puedes eliminar tu cuenta y tus datos personales tú mismo, en cualquier momento, desde{" "}
           <a href="/eliminar-cuenta" className="underline">
             /eliminar-cuenta
           </a>
-          . Para cualquier otro pedido (ver o corregir tus datos), escribinos a{" "}
+          . Para cualquier otro pedido (ver o corregir tus datos), escríbenos a{" "}
           <a href={`mailto:${CONTACTO}`} className="underline">
             {CONTACTO}
           </a>
@@ -77,12 +77,12 @@ export default function PrivacidadPage() {
       </Seccion>
 
       <Seccion titulo="Menores de edad">
-        <p>Cancha Llena está pensada para mayores de 13 años. Si sos menor de edad, usá la app con supervisión de un adulto responsable.</p>
+        <p>Cancha Llena está pensada para mayores de 13 años. Si eres menor de edad, usa la app con supervisión de un adulto responsable.</p>
       </Seccion>
 
       <Seccion titulo="Contacto">
         <p>
-          Cualquier consulta sobre esta política, escribinos a{" "}
+          Cualquier consulta sobre esta política, escríbenos a{" "}
           <a href={`mailto:${CONTACTO}`} className="underline">
             {CONTACTO}
           </a>

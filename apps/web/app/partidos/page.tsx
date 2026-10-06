@@ -13,7 +13,7 @@ const MENSAJES: Record<string, string> = {
   error_solicitud_cerrada: "Esa búsqueda de rival ya se cerró — llegaste justo tarde.",
   error_ya_respondida: "Ya habías respondido esa invitación.",
   error_no_encontrada: "Esa invitación ya no existe.",
-  error_coordenadas_invalidas: "No pudimos usar esa ubicación — probá de nuevo.",
+  error_coordenadas_invalidas: "No pudimos usar esa ubicación — prueba de nuevo.",
 };
 
 // Pantalla separada del flujo de reservar (que es puro calendario): acá se
@@ -48,7 +48,7 @@ export default async function PartidosPage({
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Partidos que buscan jugadores</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Sumate a un partido ya reservado al que le falta gente para completar el equipo.
+          Súmate a un partido ya reservado al que le falta gente para completar el equipo.
         </p>
       </div>
 

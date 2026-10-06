@@ -42,7 +42,7 @@ export default async function ResultadoPublicoPage({ params }: { params: Promise
 
       <div className="mt-8 text-center">
         <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Reservá tu cancha y armá tu propio partido.
+          Reserva tu cancha y arma tu propio partido.
         </p>
         <Link href="/" className="inline-block rounded-md px-5 py-2.5 text-sm font-medium" style={{ background: "var(--series-valle)", color: "white" }}>
           Abrir Cancha Llena

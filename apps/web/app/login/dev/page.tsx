@@ -24,8 +24,8 @@ export default async function LoginDevPage({
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Entrar como usuario de prueba</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Solo para desarrollo — sin contraseña, elegís directamente con qué jugador sembrado entrar. Para el login
-          real (Google, Microsoft, email) andá a{" "}
+          Solo para desarrollo — sin contraseña, eliges directamente con qué jugador sembrado entrar. Para el login
+          real (Google, Microsoft, email) anda a{" "}
           <Link href="/login" className="underline">
             /login
           </Link>

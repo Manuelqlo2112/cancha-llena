@@ -15,21 +15,21 @@ export const dynamic = "force-dynamic";
 const DIAS_ADELANTE = 5; // hoy + 4 días más
 
 const MENSAJES: Record<string, string> = {
-  error_ocupado: "Justo se ocupó ese horario — elegí otro.",
+  error_ocupado: "Justo se ocupó ese horario — elige otro.",
   error_cancha_no_existe: "Esa cancha ya no existe.",
-  error_fecha_pasada: "Ese día ya pasó — elegí otro.",
+  error_fecha_pasada: "Ese día ya pasó — elige otro.",
   error_ya_existe: "Ese partido ya está buscando jugadores.",
   error_sin_cupos: "Ese partido ya está completo.",
   error_ya_paso: "Ese partido ya pasó.",
-  error_sin_permiso: "No podés hacer eso en esa reserva.",
+  error_sin_permiso: "No puedes hacer eso en esa reserva.",
   error_no_encontrada: "No encontramos esa reserva.",
-  error_datos_invalidos: "Esos datos no son válidos — probá de nuevo.",
+  error_datos_invalidos: "Esos datos no son válidos — prueba de nuevo.",
   error_ya_inscrito: "Ya estabas anotado en esa liga.",
   error_sin_cupo: "Esa liga ya está completa.",
   error_pausada: "Esa liga está pausada por ahora.",
   error_no_inscrito: "No estabas anotado en esa liga.",
-  error_ya_suscrito: "Ya estabas suscripto a ese plan.",
-  error_no_suscrito: "No estabas suscripto a ese plan.",
+  error_ya_suscrito: "Ya estabas suscrito a ese plan.",
+  error_no_suscrito: "No estabas suscrito a ese plan.",
 };
 
 export default async function ComplejoPage({
@@ -101,7 +101,7 @@ export default async function ComplejoPage({
         {!session ? (
           <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
             <a href={`/login?next=/complejos/${slug}`} className="underline">
-              Iniciá sesión
+              Inicia sesión
             </a>{" "}
             para poder reservar.
           </p>
@@ -152,7 +152,7 @@ export default async function ComplejoPage({
                   </div>
                   {!session ? (
                     <a href={`/login?next=/complejos/${slug}`} className="rounded-md px-3 py-1.5 text-sm font-medium" style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}>
-                      Iniciá sesión
+                      Inicia sesión
                     </a>
                   ) : liga.inscrito ? (
                     <form action={salirDeLigaAction}>
@@ -191,7 +191,7 @@ export default async function ComplejoPage({
 
       {sp.plan ? (
         <div className="mb-6 rounded-lg px-4 py-2.5 text-sm" style={{ background: "var(--chart-surface)", color: "var(--text-secondary)", border: "1px solid var(--gridline)" }}>
-          {sp.plan === "cancelado" ? "Cancelaste tu plan mensual." : "¡Listo! Ya tenés el plan mensual activo."}
+          {sp.plan === "cancelado" ? "Cancelaste tu plan mensual." : "¡Listo! Ya tienes el plan mensual activo."}
         </div>
       ) : null}
 
@@ -221,7 +221,7 @@ export default async function ComplejoPage({
                   </div>
                   {!session ? (
                     <a href={`/login?next=/complejos/${slug}`} className="rounded-md px-3 py-1.5 text-sm font-medium" style={{ background: "var(--chart-surface)", border: "1px solid var(--gridline)" }}>
-                      Iniciá sesión
+                      Inicia sesión
                     </a>
                   ) : plan.suscrito ? (
                     <form action={cancelarSuscripcionPlanAction}>
@@ -258,7 +258,7 @@ export default async function ComplejoPage({
               ¡Reserva confirmada!{sp.descuento ? " 🔥 Con 15% de descuento por tu racha." : ""}
               {sp.planUsado ? " Cubierta por tu plan mensual." : ""}
             </p>
-            <p style={{ color: "var(--text-secondary)" }}>¿Tenés los equipos completos, o te faltan jugadores?</p>
+            <p style={{ color: "var(--text-secondary)" }}>¿Tienes los equipos completos, o te faltan jugadores?</p>
           </div>
           <div className="flex items-center gap-2">
             <form action={buscarRivalAction}>

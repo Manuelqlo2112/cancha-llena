@@ -1,4 +1,4 @@
-const ACTUALIZADO = "26 de septiembre de 2026";
+const ACTUALIZADO = "6 de octubre de 2026";
 const CONTACTO = "rodriguez.manuel.c17@gmail.com";
 
 function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
@@ -21,7 +21,7 @@ export default function TerminosPage() {
       </p>
 
       <Seccion titulo="Aceptación">
-        <p>Al usar Cancha Llena aceptás estos términos. Si no estás de acuerdo, no uses la app.</p>
+        <p>Al usar Cancha Llena aceptas estos términos. Si no estás de acuerdo, no uses la app.</p>
       </Seccion>
 
       <Seccion titulo="Qué hace Cancha Llena">
@@ -34,14 +34,14 @@ export default function TerminosPage() {
 
       <Seccion titulo="Tu cuenta">
         <p>
-          Sos responsable de mantener tu contraseña segura y de la actividad que ocurra en tu cuenta. Avisanos si
-          creés que alguien más accedió a tu cuenta sin tu permiso.
+          Eres responsable de mantener tu contraseña segura y de la actividad que ocurra en tu cuenta. Avísanos si
+          crees que alguien más accedió a tu cuenta sin tu permiso.
         </p>
       </Seccion>
 
       <Seccion titulo="Reservas y cancelaciones">
         <p>
-          Podés cancelar una reserva hasta el mismo día en que la hiciste; después de esa fecha, la cancelación queda
+          Puedes cancelar una reserva hasta el mismo día en que la hiciste; después de esa fecha, la cancelación queda
           a criterio del complejo. Algunos complejos piden un abono online al reservar — otros cobran todo en cancha.
           Esto se indica siempre antes de confirmar.
         </p>
@@ -49,7 +49,7 @@ export default function TerminosPage() {
 
       <Seccion titulo="Buscar rival y rachas">
         <p>
-          Si te faltan jugadores, podés abrir tu partido para que otros se sumen. Cualquier jugador anotado puede
+          Si te faltan jugadores, puedes abrir tu partido para que otros se sumen. Cualquier jugador anotado puede
           hacer esto. Las rachas premian jugar seguido en un mismo complejo — son un incentivo, no una garantía ni un
           producto financiero.
         </p>

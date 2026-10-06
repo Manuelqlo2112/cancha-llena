@@ -33,7 +33,7 @@ export default function LoginScreen() {
       if (router.canGoBack()) router.back();
       else router.replace("/");
     } catch {
-      setError("No se pudo conectar — revisá tu conexión e intentá de nuevo.");
+      setError("No se pudo conectar — revisa tu conexión e intenta de nuevo.");
     } finally {
       setCargando(false);
     }
@@ -69,11 +69,11 @@ export default function LoginScreen() {
       </Pressable>
 
       <Link href="/registro" style={styles.link}>
-        ¿No tenés cuenta? Crear cuenta
+        ¿No tienes cuenta? Crear cuenta
       </Link>
       {__DEV__ ? (
         <Link href="/login/dev" style={[styles.link, { marginTop: 16, fontSize: 12 }]}>
-          ¿Sos del equipo? Entrar como usuario de prueba
+          ¿Eres del equipo? Entrar como usuario de prueba
         </Link>
       ) : null}
     </View>

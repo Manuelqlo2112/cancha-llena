@@ -85,7 +85,7 @@ export default function ComplejoScreen() {
       // Sin este catch, un error de red acá quedaba como una promesa
       // rechazada sin atrapar: el botón se destrababa (por el finally) pero
       // el usuario nunca se enteraba de que la reserva no se hizo.
-      Alert.alert("No se pudo reservar", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo reservar", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setReservando(null);
     }
@@ -103,7 +103,7 @@ export default function ComplejoScreen() {
         Alert.alert("No se pudo", r.error ?? "");
       }
     } catch {
-      Alert.alert("No se pudo", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setEnviandoSolicitud(false);
     }
@@ -121,7 +121,7 @@ export default function ComplejoScreen() {
       }
       await cargar();
     } catch {
-      Alert.alert("No se pudo anotar", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo anotar", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setLigaEnCurso(null);
     }
@@ -134,7 +134,7 @@ export default function ComplejoScreen() {
       if (!r.ok) Alert.alert("No se pudo salir", r.error ?? "");
       await cargar();
     } catch {
-      Alert.alert("No se pudo salir", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo salir", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setLigaEnCurso(null);
     }
@@ -148,7 +148,7 @@ export default function ComplejoScreen() {
       if (!r.ok) Alert.alert("No se pudo suscribir", r.error === "ya_suscrito" ? "Ya estabas suscripto." : (r.error ?? ""));
       await cargar();
     } catch {
-      Alert.alert("No se pudo suscribir", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo suscribir", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setPlanEnCurso(null);
     }
@@ -161,7 +161,7 @@ export default function ComplejoScreen() {
       if (!r.ok) Alert.alert("No se pudo cancelar", r.error ?? "");
       await cargar();
     } catch {
-      Alert.alert("No se pudo cancelar", "Revisá tu conexión e intentá de nuevo.");
+      Alert.alert("No se pudo cancelar", "Revisa tu conexión e intenta de nuevo.");
     } finally {
       setPlanEnCurso(null);
     }
@@ -216,7 +216,7 @@ export default function ComplejoScreen() {
               </Text>
               {!usuario ? (
                 <Pressable onPress={() => router.push("/login")}>
-                  <Text style={[styles.muted, { textDecorationLine: "underline", marginTop: 6 }]}>Iniciá sesión para reservar</Text>
+                  <Text style={[styles.muted, { textDecorationLine: "underline", marginTop: 6 }]}>Inicia sesión para reservar</Text>
                 </Pressable>
               ) : null}
               {complejo.descuentoActivo ? (
@@ -358,7 +358,7 @@ export default function ComplejoScreen() {
             <Text style={styles.modalSubtitle}>
               {pendingConfirm?.canchaNombre} · {pendingConfirm && formatDiaChip(pendingConfirm.fecha).numero}/{pendingConfirm?.hora}
             </Text>
-            <Text style={styles.modalPregunta}>¿Tenés los equipos completos, o te faltan jugadores?</Text>
+            <Text style={styles.modalPregunta}>¿Tienes los equipos completos, o te faltan jugadores?</Text>
             <Pressable disabled={enviandoSolicitud} style={[styles.modalBtn, { backgroundColor: colors.seriesPrime }]} onPress={onNecesitaJugadores}>
               <Text style={styles.modalBtnText}>{enviandoSolicitud ? "..." : "Me faltan jugadores"}</Text>
             </Pressable>

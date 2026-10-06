@@ -8,8 +8,8 @@ import { crearComplejoAction } from "@/app/admin/actions";
 export const dynamic = "force-dynamic";
 
 const MENSAJES: Record<string, string> = {
-  error_sin_permiso: "No tenés permiso para hacer eso.",
-  error_datos_invalidos: "Revisá los datos ingresados en el formulario.",
+  error_sin_permiso: "No tienes permiso para hacer eso.",
+  error_datos_invalidos: "Revisa los datos ingresados en el formulario.",
 };
 
 export default async function AdminIndexPage({
@@ -43,7 +43,7 @@ export default async function AdminIndexPage({
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Elegí un complejo</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Elige un complejo</h1>
 
       {mensajeError ? (
         <div className="mb-6 rounded-lg px-4 py-2.5 text-sm" style={{ background: "var(--chart-surface)", color: "var(--text-secondary)", border: "1px solid var(--gridline)" }}>
@@ -68,7 +68,7 @@ export default async function AdminIndexPage({
         <h2 className="mb-1 font-medium">Agregar un complejo nuevo</h2>
         <p className="mb-4 text-sm" style={{ color: "var(--text-secondary)" }}>
           Da de alta un complejo real — después le asignás un admin propio actualizando su cuenta con
-          complejoAdminId, o lo administrás vos mismo desde acá.
+          complejoAdminId, o lo administras tú mismo desde acá.
         </p>
         <form action={crearComplejoAction} className="flex flex-col gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
